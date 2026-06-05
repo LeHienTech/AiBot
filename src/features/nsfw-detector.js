@@ -47,14 +47,19 @@ async function classifyImage(imageUrl) {
         .raw()
         .toBuffer({ resolveWithObject: true });
 
-    // Phân loại ảnh (tf.tidy tự động giải phóng tất cả tensor trung gian)
-    const predictions = await tf.tidy(() => {
-        const imageTensor = tf.tensor3d(
+    // Tạo tensor an toàn qua tf.tidy
+    const imageTensor = tf.tidy(() => {
+        return tf.tensor3d(
             new Uint8Array(data),
             [info.height, info.width, 3]
         );
-        return nsfwModel.classify(imageTensor);
     });
+
+    // Phân loại ảnh
+    const predictions = await nsfwModel.classify(imageTensor);
+    
+    // Giải phóng bộ nhớ tensor
+    imageTensor.dispose();
 
     return predictions;
 }

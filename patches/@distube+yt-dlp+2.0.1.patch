@@ -1,0 +1,37 @@
+diff --git a/node_modules/@distube/yt-dlp/dist/index.js b/node_modules/@distube/yt-dlp/dist/index.js
+index b17b126..1d1c000 100644
+--- a/node_modules/@distube/yt-dlp/dist/index.js
++++ b/node_modules/@distube/yt-dlp/dist/index.js
+@@ -78,10 +78,14 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
+       output += chunk;
+     });
+     process2.stderr?.on("data", (chunk) => {
+-      output += chunk;
++      // Ignore stderr to prevent deprecation warnings from corrupting JSON output
+     });
+     process2.on("close", (code) => {
+-      if (code === 0) resolve(JSON.parse(output));
++      if (code === 0) {
++        // Fix: Strip out any Deprecated Feature warnings before parsing
++        const cleanOutput = output.replace(/^Deprecated Feature:.*?\n/gm, '');
++        resolve(JSON.parse(cleanOutput));
++      }
+       else reject(new Error(output));
+     });
+     process2.on("error", reject);
+@@ -144,7 +148,6 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+     const info = await json(url, {
+       dumpSingleJson: true,
+       noWarnings: true,
+-      noCallHome: true,
+       preferFreeFormats: true,
+       skipDownload: true,
+       simulate: true
+@@ -174,7 +177,6 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+     const info = await json(song.url, {
+       dumpSingleJson: true,
+       noWarnings: true,
+-      noCallHome: true,
+       preferFreeFormats: true,
+       skipDownload: true,
+       simulate: true,

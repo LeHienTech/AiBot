@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
-const { YouTubePlugin } = require('@distube/youtube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { SoundCloudPlugin } = require('@distube/soundcloud');
 const ffmpegPath = require('ffmpeg-static');
 
@@ -27,7 +27,7 @@ const client = new Client({
 client.distube = new DisTube(client, {
     ffmpeg: { path: ffmpegPath },
     plugins: [
-        new YouTubePlugin(),
+        new YtDlpPlugin({ update: true }),
         new SoundCloudPlugin()
     ]
 });

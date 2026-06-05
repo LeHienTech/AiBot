@@ -38,7 +38,7 @@ interactionHandler.register(client);
 distubeEvents.register(client.distube);
 
 // ─── Bot sẵn sàng ───
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`🤖 Bot đã sẵn sàng: ${client.user.tag}`);
     await nsfwDetector.loadModel();
 });

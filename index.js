@@ -3,7 +3,6 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { SoundCloudPlugin } = require('@distube/soundcloud');
-const ffmpegPath = require('ffmpeg-static');
 
 // Handlers
 const messageHandler = require('./src/handlers/message');
@@ -23,9 +22,9 @@ const client = new Client({
     ],
 });
 
-// ─── Cấu hình DisTube ───
+// ─── Cấu hình DisTube (Music) ───
 client.distube = new DisTube(client, {
-    ffmpeg: { path: ffmpegPath },
+    ffmpeg: { path: 'ffmpeg' },
     plugins: [
         new YtDlpPlugin({ update: true }),
         new SoundCloudPlugin()

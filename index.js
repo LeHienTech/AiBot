@@ -11,6 +11,7 @@ const distubeEvents = require('./src/handlers/distube-events');
 
 // Features
 const nsfwDetector = require('./src/features/nsfw-detector');
+const audioProxy = require('./src/utils/audio-proxy');
 
 // ─── Khởi tạo Client ───
 const client = new Client({
@@ -24,29 +25,9 @@ const client = new Client({
 
 // ─── Cấu hình DisTube (Music) ───
 client.distube = new DisTube(client, {
-    ffmpeg: {
-        path: 'ffmpeg',
-        args: {
-            // Input args giúp phát nhạc dài ổn định hơn
-            input: {
-                reconnect: 1,
-                reconnect_streamed: 1,
-                reconnect_on_network_error: 1,
-                reconnect_on_http_error: '4xx,5xx',
-                reconnect_delay_max: 15,
-                rw_timeout: 30000000,       // 30 giây timeout cho read/write (microseconds)
-            },
-        },
-    },
+    ffmpeg: { path: 'ffmpeg' },
     plugins: [
-        new YtDlpPlugin({
-            update: true,
-            requestOptions: {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                },
-            },
-        }),
+        new YtDlpPlugin({ update: true }),
         new SoundCloudPlugin()
     ]
 });
@@ -59,6 +40,34 @@ distubeEvents.register(client.distube);
 // ─── Bot sẵn sàng ───
 client.once('clientReady', async () => {
     console.log(`🤖 Bot đã sẵn sàng: ${client.user.tag}`);
+
+    // ─── Khởi tạo Audio Proxy (hỗ trợ nhạc dài) ───
+    try {
+        await audioProxy.startProxy();
+
+        // Override getStreamURL của yt-dlp plugin để dùng proxy
+        // Thay vì cho FFmpeg tải trực tiếp từ YouTube (bị throttle),
+        // proxy dùng yt-dlp pipe audio qua localhost → luôn ổn định
+        const ytdlpPlugin = client.distube.plugins.find(
+            p => p.constructor.name === 'YtDlpPlugin'
+        );
+        if (ytdlpPlugin) {
+            const originalGetStreamURL = ytdlpPlugin.getStreamURL.bind(ytdlpPlugin);
+            ytdlpPlugin.getStreamURL = async function (song) {
+                try {
+                    return audioProxy.getProxyUrl(song.url);
+                } catch (e) {
+                    console.warn('[audio-proxy] Fallback to direct URL:', e.message);
+                    return originalGetStreamURL(song);
+                }
+            };
+            console.log('✅ Audio proxy sẵn sàng — hỗ trợ phát nhạc dài');
+        }
+    } catch (err) {
+        console.error('⚠️ Không thể khởi tạo audio proxy:', err.message);
+        console.log('↳ Bot sẽ dùng phương thức phát nhạc mặc định');
+    }
+
     await nsfwDetector.loadModel();
 });
 

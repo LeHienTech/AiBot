@@ -35,6 +35,9 @@ const LM_STUDIO = {
 // Discord message limit
 const DISCORD_MAX_LENGTH = 1990;
 
+// Giới hạn thời lượng bài hát (giây) - 3 giờ
+const MAX_SONG_DURATION = 3 * 60 * 60;
+
 module.exports = {
     BLACKLIST,
     NSFW_THRESHOLD,
@@ -43,4 +46,5 @@ module.exports = {
     YT_DLP_PATH,
     LM_STUDIO,
     DISCORD_MAX_LENGTH,
+    MAX_SONG_DURATION,
 };

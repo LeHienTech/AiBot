@@ -1,5 +1,6 @@
 const { getVoiceConnection, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const { playlistData, silentAdd, loadBatch } = require('../utils/playlist');
+const { MAX_SONG_DURATION } = require('../config');
 
 /**
  * Đăng ký DisTube event handlers
@@ -7,7 +8,21 @@ const { playlistData, silentAdd, loadBatch } = require('../utils/playlist');
  */
 function register(distube) {
     // Thông báo khi phát bài
-    distube.on('playSong', (queue, song) => {
+    distube.on('playSong', async (queue, song) => {
+        // Kiểm tra nếu bài hát quá dài
+        if (song.duration > MAX_SONG_DURATION) {
+            queue.textChannel?.send(`❌ Không thể phát nhạc **${song.name}** vì nhạc quá dài (${song.formattedDuration})`);
+            try {
+                if (queue.songs.length > 1) {
+                    await distube.skip(queue);
+                } else {
+                    await distube.stop(queue);
+                }
+            } catch (e) {
+                // Bỏ qua lỗi khi skip/stop
+            }
+            return;
+        }
         queue.textChannel?.send(`🎶 Đang phát: **${song.name}** - \`${song.formattedDuration}\``);
     });
 

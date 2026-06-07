@@ -1,6 +1,7 @@
 const ytSearch = require('yt-search');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder } = require('discord.js');
 const { playlistData, silentAdd, getPlaylistUrls, loadBatch } = require('../utils/playlist');
+const { MAX_SONG_DURATION } = require('../config');
 
 /**
  * Xử lý lệnh !p <query> — Phát nhạc
@@ -108,8 +109,14 @@ async function handleSingleSong(message, distube, query, voiceChannel, autoPlayF
 
         if (searchResult && searchResult.videos.length > 0) {
             if (autoPlayFirst) {
-                playQuery = searchResult.videos[0].url;
-                await searchMsg.edit(`✅ Đã tự động chọn bài đầu tiên: **${searchResult.videos[0].title}**`);
+                const firstVideo = searchResult.videos[0];
+                // Kiểm tra thời lượng bài hát
+                if (firstVideo.seconds && firstVideo.seconds > MAX_SONG_DURATION) {
+                    await searchMsg.edit(`❌ Không thể phát nhạc **${firstVideo.title}** vì nhạc quá dài (${firstVideo.timestamp})`);
+                    return;
+                }
+                playQuery = firstVideo.url;
+                await searchMsg.edit(`✅ Đã tự động chọn bài đầu tiên: **${firstVideo.title}**`);
                 await distube.play(voiceChannel, playQuery, {
                     message,
                     textChannel: message.channel,
@@ -208,9 +215,22 @@ async function handleSingleSong(message, distube, query, voiceChannel, autoPlayF
                     await i.update({ embeds: generateEmbeds(currentPage), components: generateComponents(currentPage) });
                 } else if (i.customId.startsWith('select_')) {
                     const choiceIndex = parseInt(i.customId.split('_')[1], 10);
-                    playQuery = topResults[choiceIndex].url;
+                    const selectedVideo = topResults[choiceIndex];
+                    
+                    // Kiểm tra thời lượng bài hát
+                    if (selectedVideo.seconds && selectedVideo.seconds > MAX_SONG_DURATION) {
+                        await i.update({ 
+                            content: `❌ Không thể phát nhạc **${selectedVideo.title}** vì nhạc quá dài (${selectedVideo.timestamp})`, 
+                            embeds: [], 
+                            components: [] 
+                        });
+                        collector.stop('too_long');
+                        return;
+                    }
+                    
+                    playQuery = selectedVideo.url;
                     collector.stop('selected');
-                    await i.update({ content: `✅ Đã chọn: **${topResults[choiceIndex].title}**`, embeds: [], components: [] });
+                    await i.update({ content: `✅ Đã chọn: **${selectedVideo.title}**`, embeds: [], components: [] });
                     
                     // Bắt đầu phát nhạc
                     await distube.play(voiceChannel, playQuery, {

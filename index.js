@@ -26,7 +26,9 @@ const client = new Client({
 client.distube = new DisTube(client, {
     ffmpeg: { path: 'ffmpeg' },
     plugins: [
-        new YtDlpPlugin({ update: true }),
+        new YtDlpPlugin({
+            update: true,
+        }),
         new SoundCloudPlugin()
     ]
 });

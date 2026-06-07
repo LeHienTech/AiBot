@@ -66,7 +66,7 @@ async function execute(message) {
 
     } catch (error) {
         console.error('Lỗi kết nối LM Studio:', error.message);
-        message.reply('❌ Không thể kết nối AI. Đảm bảo LM Studio đang chạy Local Server ở cổng 1234!');
+        message.reply('❌ Hiện không kết nối được với Ai');
     }
 }
 

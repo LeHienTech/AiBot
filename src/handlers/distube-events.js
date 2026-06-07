@@ -76,15 +76,16 @@ function register(distube) {
         // Xử lý voice connection stability
         const connection = getVoiceConnection(queue.id);
         if (connection) {
+            // Tăng timeout cho stream dài
             connection.on('stateChange', async (oldState, newState) => {
                 // Nếu connection bị disconnect, thử reconnect
                 if (newState.status === VoiceConnectionStatus.Disconnected) {
                     try {
                         console.log('⚠️ Voice connection disconnected, đang thử reconnect...');
-                        // Chờ xem có reconnect tự động không (5 giây)
+                        // Chờ xem có reconnect tự động không (15 giây - tăng từ 5s cho stream dài)
                         await Promise.race([
-                            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
-                            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+                            entersState(connection, VoiceConnectionStatus.Signalling, 15000),
+                            entersState(connection, VoiceConnectionStatus.Connecting, 15000),
                         ]);
                         // Đang reconnect, không cần làm gì
                         console.log('🔄 Voice connection đang reconnect...');
@@ -103,11 +104,30 @@ function register(distube) {
     });
 
     // Xử lý lỗi DisTube (v5: error event = (error, queue, song))
-    distube.on('error', (error, queue) => {
-        console.error('DisTube error:', error.message || error);
+    distube.on('error', (error, queue, song) => {
+        const errorMsg = error.message || String(error);
+        console.error('DisTube error:', errorMsg);
         const textChannel = queue?.textChannel;
-        if (textChannel) {
-            textChannel.send(`❌ Đã xảy ra lỗi: ${error.message || 'Lỗi không xác định'}`);
+        if (!textChannel) return;
+
+        // Kiểm tra nếu lỗi liên quan đến stream bị ngắt (thường xảy ra với nhạc dài)
+        const isStreamError = errorMsg.includes('ffmpeg exited') ||
+            errorMsg.includes('aborted') ||
+            errorMsg.includes('PREMATURE_CLOSE') ||
+            errorMsg.includes('ERR_STREAM') ||
+            errorMsg.includes('ETIMEDOUT') ||
+            errorMsg.includes('ECONNRESET');
+
+        if (isStreamError && song) {
+            const songName = song.name || 'không rõ';
+            const duration = song.formattedDuration || '';
+            textChannel.send(
+                `❌ Không thể phát nhạc **${songName}** vì nhạc quá dài` +
+                (duration ? ` (${duration})` : '') +
+                `\n💡 Hãy thử tìm bản ngắn hơn hoặc dùng link khác.`
+            );
+        } else {
+            textChannel.send(`❌ Đã xảy ra lỗi: ${errorMsg}`);
         }
     });
 

@@ -24,10 +24,28 @@ const client = new Client({
 
 // ─── Cấu hình DisTube (Music) ───
 client.distube = new DisTube(client, {
-    ffmpeg: { path: 'ffmpeg' },
+    ffmpeg: {
+        path: 'ffmpeg',
+        args: {
+            // Input args giúp phát nhạc dài ổn định hơn
+            input: {
+                reconnect: 1,
+                reconnect_streamed: 1,
+                reconnect_on_network_error: 1,
+                reconnect_on_http_error: '4xx,5xx',
+                reconnect_delay_max: 15,
+                rw_timeout: 30000000,       // 30 giây timeout cho read/write (microseconds)
+            },
+        },
+    },
     plugins: [
         new YtDlpPlugin({
             update: true,
+            requestOptions: {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                },
+            },
         }),
         new SoundCloudPlugin()
     ]

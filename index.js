@@ -71,5 +71,21 @@ client.once('clientReady', async () => {
     await nsfwDetector.loadModel();
 });
 
+// ─── Xử lý lỗi toàn cục (tránh crash) ───
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ Uncaught Exception:', err.message);
+    // Không process.exit() — để bot tiếp tục chạy
+});
+
+client.on('error', (err) => {
+    console.error('⚠️ Discord client error:', err.message);
+});
+client.on('shardError', (err) => {
+    console.error('⚠️ Discord WebSocket error:', err.message);
+});
+
 // ─── Đăng nhập ───
 client.login(process.env.DISCORD_TOKEN);

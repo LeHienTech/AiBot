@@ -41,6 +41,7 @@ function startProxy() {
                     '--retries', '5',          // Retry 5 lần nếu lỗi
                     '--fragment-retries', '5', // Retry fragment 5 lần
                     '--buffer-size', '16K',
+                    '--extractor-args', 'youtube:player_client=ios', // Fix HTTP Error 403
                     videoUrl
                 ], {
                     windowsHide: true,

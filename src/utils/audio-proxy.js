@@ -33,15 +33,16 @@ function startProxy() {
 
                 // Spawn yt-dlp để download và pipe audio trực tiếp
                 const ytdlp = spawn(YT_DLP_PATH, [
-                    '-f', 'ba/ba*',           // Best audio
+                    '-f', 'bestaudio/best',    // Best audio, fallback best combined
                     '-o', '-',                 // Output to stdout (pipe)
                     '--no-warnings',
                     '--no-part',
                     '--no-cache-dir',
+                    '--no-check-certificates',
                     '--retries', '5',          // Retry 5 lần nếu lỗi
                     '--fragment-retries', '5', // Retry fragment 5 lần
                     '--buffer-size', '16K',
-                    '--extractor-args', 'youtube:player_client=ios', // Fix HTTP Error 403
+                    '--no-playlist',
                     videoUrl
                 ], {
                     windowsHide: true,

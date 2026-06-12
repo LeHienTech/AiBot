@@ -45,7 +45,14 @@ async function play(message, distube) {
         }
     } catch (error) {
         console.error('Lỗi phát nhạc:', error);
-        message.reply('❌ Có lỗi xảy ra khi phát nhạc! Hãy thử một bài khác.');
+        const errMsg = error.message || String(error);
+        if (errMsg.includes('ConnectTimeout') || errMsg.includes('UND_ERR_CONNECT_TIMEOUT') || errMsg.includes('ETIMEDOUT') || errMsg.includes('fetch failed')) {
+            message.reply('⏱️ Kết nối bị timeout! Mạng có thể đang chậm. Hãy thử lại sau vài giây.');
+        } else if (errMsg.includes('No result') || errMsg.includes('not a supported')) {
+            message.reply('❌ Không tìm thấy bài hát hoặc link không hợp lệ!');
+        } else {
+            message.reply('❌ Có lỗi xảy ra khi phát nhạc! Hãy thử một bài khác.');
+        }
     }
 }
 

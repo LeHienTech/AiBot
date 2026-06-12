@@ -118,7 +118,22 @@ function register(distube) {
             errorMsg.includes('ETIMEDOUT') ||
             errorMsg.includes('ECONNRESET');
 
-        if (isStreamError && song) {
+        // Kiểm tra lỗi kết nối/timeout
+        const isConnectionError = errorMsg.includes('ConnectTimeoutError') ||
+            errorMsg.includes('UND_ERR_CONNECT_TIMEOUT') ||
+            errorMsg.includes('Connect Timeout') ||
+            errorMsg.includes('ENOTFOUND') ||
+            errorMsg.includes('ECONNREFUSED') ||
+            errorMsg.includes('fetch failed') ||
+            errorMsg.includes('network');
+
+        if (isConnectionError) {
+            textChannel.send(
+                `⏱️ Kết nối bị timeout khi tải nhạc` +
+                (song ? ` **${song.name || ''}**` : '') +
+                `\n💡 Có thể do mạng chậm hoặc server bận. Hãy thử lại sau vài giây!`
+            );
+        } else if (isStreamError && song) {
             const songName = song.name || 'không rõ';
             const duration = song.formattedDuration || '';
             textChannel.send(

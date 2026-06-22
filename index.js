@@ -70,6 +70,74 @@ client.once('clientReady', async () => {
     }
 
     await nsfwDetector.loadModel();
+
+    // ─── Tự động rời kênh sau 1 phút nếu không ai trong kênh ───
+    const leaveTimers = new Map(); // guildId -> timeout
+
+    client.on('voiceStateUpdate', (oldState, newState) => {
+        const guildId = oldState.guild.id || newState.guild.id;
+        const botId = client.user.id;
+
+        // Lấy kênh voice mà bot đang ở
+        const botVoiceChannel = oldState.guild.members.me?.voice?.channel;
+        if (!botVoiceChannel) return; // Bot không ở kênh voice nào
+
+        // Đếm số member thực (không phải bot) trong kênh
+        const humanMembers = botVoiceChannel.members.filter(m => !m.user.bot).size;
+
+        if (humanMembers === 0) {
+            // Kênh trống (chỉ còn bot) → đặt timer 60 giây
+            if (!leaveTimers.has(guildId)) {
+                console.log(`⏱️ Kênh voice trống, sẽ rời sau 60 giây (guild: ${guildId})`);
+                const timer = setTimeout(() => {
+                    leaveTimers.delete(guildId);
+
+                    // Kiểm tra lại lần cuối
+                    const currentChannel = oldState.guild.members.me?.voice?.channel;
+                    if (!currentChannel) return;
+                    const stillEmpty = currentChannel.members.filter(m => !m.user.bot).size === 0;
+
+                    if (stillEmpty) {
+                        console.log(`👋 Rời kênh voice sau 1 phút không ai (guild: ${guildId})`);
+
+                        // Dừng nhạc và dọn dẹp
+                        try {
+                            const queue = client.distube.getQueue(guildId);
+                            if (queue) {
+                                queue.textChannel?.send('👋 Không ai trong kênh thoại sau 1 phút, bot tự rời kênh.');
+                                if (queue.paused) client.distube.resume(guildId);
+                                client.distube.stop(guildId).catch(() => {});
+                            }
+                        } catch (e) {
+                            // Queue không tồn tại, bỏ qua
+                        }
+
+                        // Xóa playlist data
+                        const { playlistData } = require('./src/utils/playlist');
+                        playlistData.delete(guildId);
+
+                        // Rời kênh voice
+                        try {
+                            client.distube.voices.leave(guildId);
+                        } catch (e) {
+                            const { getVoiceConnection } = require('@discordjs/voice');
+                            const conn = getVoiceConnection(guildId);
+                            if (conn) conn.destroy();
+                        }
+                    }
+                }, 60 * 1000); // 60 giây
+
+                leaveTimers.set(guildId, timer);
+            }
+        } else {
+            // Có người quay lại → hủy timer
+            if (leaveTimers.has(guildId)) {
+                console.log(`✅ Có người quay lại kênh voice, hủy timer rời (guild: ${guildId})`);
+                clearTimeout(leaveTimers.get(guildId));
+                leaveTimers.delete(guildId);
+            }
+        }
+    });
 });
 
 // ─── Xử lý lỗi toàn cục (tránh crash) ───

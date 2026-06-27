@@ -31,8 +31,7 @@ function startProxy() {
 
                 console.log(`[audio-proxy] 🎵 Stream: ${videoUrl.substring(0, 80)}...`);
 
-                // Spawn yt-dlp để download và pipe audio trực tiếp
-                const ytdlp = spawn(YT_DLP_PATH, [
+                const args = [
                     '-f', 'bestaudio/best',    // Best audio, fallback best combined
                     '-o', '-',                 // Output to stdout (pipe)
                     '--no-warnings',
@@ -42,9 +41,20 @@ function startProxy() {
                     '--retries', '5',          // Retry 5 lần nếu lỗi
                     '--fragment-retries', '5', // Retry fragment 5 lần
                     '--buffer-size', '16K',
-                    '--no-playlist',
-                    videoUrl
-                ], {
+                    '--no-playlist'
+                ];
+
+                const fs = require('fs');
+                const path = require('path');
+                const cookiesPath = path.join(__dirname, '../../cookies.txt');
+                if (fs.existsSync(cookiesPath)) {
+                    args.push('--cookies', cookiesPath);
+                }
+
+                args.push(videoUrl);
+
+                // Spawn yt-dlp để download và pipe audio trực tiếp
+                const ytdlp = spawn(YT_DLP_PATH, args, {
                     windowsHide: true,
                 });
 

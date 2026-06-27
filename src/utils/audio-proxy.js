@@ -41,7 +41,8 @@ function startProxy() {
                     '--retries', '5',          // Retry 5 lần nếu lỗi
                     '--fragment-retries', '5', // Retry fragment 5 lần
                     '--buffer-size', '16K',
-                    '--no-playlist'
+                    '--no-playlist',
+                    '--js-runtimes', 'node'
                 ];
 
                 const fs = require('fs');

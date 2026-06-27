@@ -1,5 +1,5 @@
 diff --git a/node_modules/@distube/yt-dlp/dist/index.js b/node_modules/@distube/yt-dlp/dist/index.js
-index b17b126..7d8f888 100644
+index b17b126..bfcdba6 100644
 --- a/node_modules/@distube/yt-dlp/dist/index.js
 +++ b/node_modules/@distube/yt-dlp/dist/index.js
 @@ -78,10 +78,14 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
@@ -25,7 +25,7 @@ index b17b126..7d8f888 100644
        dumpSingleJson: true,
 -      noWarnings: true,
 -      noCallHome: true,
-+      noWarnings: true, cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++      noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
        preferFreeFormats: true,
        skipDownload: true,
        simulate: true
@@ -35,7 +35,7 @@ index b17b126..7d8f888 100644
        dumpSingleJson: true,
 -      noWarnings: true,
 -      noCallHome: true,
-+      noWarnings: true, cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++      noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
        preferFreeFormats: true,
        skipDownload: true,
        simulate: true,

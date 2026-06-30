@@ -4,6 +4,8 @@ const { DisTube } = require('distube');
 const { YtDlpPlugin } = require('@distube/yt-dlp');
 const { SoundCloudPlugin } = require('@distube/soundcloud');
 const ffmpegPath = require('ffmpeg-static');
+const fs = require('fs');
+const path = require('path');
 
 // Handlers
 const messageHandler = require('./src/handlers/message');
@@ -13,6 +15,22 @@ const distubeEvents = require('./src/handlers/distube-events');
 // Features
 const nsfwDetector = require('./src/features/nsfw-detector');
 const audioProxy = require('./src/utils/audio-proxy');
+
+// ─── Tạo cookies.txt từ env var (cho server deploy) ───
+const cookiesPath = path.join(__dirname, 'cookies.txt');
+if (!fs.existsSync(cookiesPath) && process.env.YOUTUBE_COOKIES_BASE64) {
+    try {
+        const cookiesContent = Buffer.from(process.env.YOUTUBE_COOKIES_BASE64, 'base64').toString('utf-8');
+        fs.writeFileSync(cookiesPath, cookiesContent);
+        console.log('🍪 Đã tạo cookies.txt từ environment variable');
+    } catch (err) {
+        console.error('⚠️ Không thể tạo cookies.txt:', err.message);
+    }
+} else if (fs.existsSync(cookiesPath)) {
+    console.log('🍪 cookies.txt đã tồn tại');
+} else {
+    console.warn('⚠️ Không có cookies.txt và không có YOUTUBE_COOKIES_BASE64 — YouTube có thể chặn bot!');
+}
 
 // ─── Khởi tạo Client ───
 const client = new Client({

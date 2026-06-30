@@ -2,6 +2,10 @@ const { getVoiceConnection, VoiceConnectionStatus, entersState } = require('@dis
 const { playlistData, silentAdd, loadBatch } = require('../utils/playlist');
 const { MAX_SONG_DURATION } = require('../config');
 
+// Theo dõi số lần retry cho mỗi guild (tránh retry vô hạn)
+const retryCount = new Map(); // guildId -> { songUrl, count }
+const MAX_RETRIES = 2;
+
 /**
  * Đăng ký DisTube event handlers
  * @param {Object} distube - DisTube instance
@@ -23,6 +27,18 @@ function register(distube) {
             }
             return;
         }
+
+        // Reset retry count khi phát bài mới thành công
+        const guildId = queue.textChannel?.guildId;
+        if (guildId) {
+            const retry = retryCount.get(guildId);
+            if (retry && retry.songUrl === song.url) {
+                // Đang retry bài này, không thông báo lại
+                return;
+            }
+            retryCount.delete(guildId);
+        }
+
         queue.textChannel?.send(`🎶 Đang phát: **${song.name}** - \`${song.formattedDuration}\``);
     });
 
@@ -37,6 +53,9 @@ function register(distube) {
     distube.on('finishSong', async (queue, song) => {
         const guildId = queue.textChannel?.guildId;
         if (!guildId) return;
+
+        // Reset retry count khi bài hoàn thành bình thường
+        retryCount.delete(guildId);
 
         const guildData = playlistData.get(guildId);
         if (!guildData) return;
@@ -104,20 +123,22 @@ function register(distube) {
     });
 
     // Xử lý lỗi DisTube (v5: error event = (error, queue, song))
-    distube.on('error', (error, queue, song) => {
+    distube.on('error', async (error, queue, song) => {
         const errorMsg = error.message || String(error);
         const errorCode = error.errorCode || '';
         console.error('DisTube error:', errorMsg);
         const textChannel = queue?.textChannel;
-        if (!textChannel) return;
+        const guildId = queue?.textChannel?.guildId || queue?.id;
 
-        // Kiểm tra nếu lỗi liên quan đến stream bị ngắt (thường xảy ra với nhạc dài)
+        // Kiểm tra nếu lỗi liên quan đến stream bị ngắt (thường xảy ra khi phát giữa chừng)
         const isStreamError = errorMsg.includes('ffmpeg exited') ||
             errorMsg.includes('aborted') ||
             errorMsg.includes('PREMATURE_CLOSE') ||
             errorMsg.includes('ERR_STREAM') ||
-            errorMsg.includes('ETIMEDOUT') ||
-            errorMsg.includes('ECONNRESET');
+            errorMsg.includes('ECONNRESET') ||
+            errorMsg.includes('write after end') ||
+            errorMsg.includes('Cannot read properties') ||
+            errorMsg.includes('resource is not readable');
 
         // Kiểm tra lỗi kết nối/timeout
         const isConnectionError = errorMsg.includes('ConnectTimeoutError') ||
@@ -126,7 +147,49 @@ function register(distube) {
             errorMsg.includes('ENOTFOUND') ||
             errorMsg.includes('ECONNREFUSED') ||
             errorMsg.includes('fetch failed') ||
-            errorMsg.includes('network');
+            errorMsg.includes('network') ||
+            errorMsg.includes('ETIMEDOUT');
+
+        // ─── Auto-retry: Tự động phát lại khi stream bị ngắt giữa chừng ───
+        if ((isStreamError || isConnectionError) && song && guildId) {
+            const retry = retryCount.get(guildId) || { songUrl: null, count: 0 };
+
+            if (retry.songUrl === song.url) {
+                retry.count++;
+            } else {
+                retry.songUrl = song.url;
+                retry.count = 1;
+            }
+            retryCount.set(guildId, retry);
+
+            if (retry.count <= MAX_RETRIES) {
+                console.log(`🔄 Auto-retry ${retry.count}/${MAX_RETRIES}: ${song.name || song.url}`);
+                textChannel?.send(
+                    `⚠️ Nhạc bị gián đoạn, đang thử phát lại... (lần ${retry.count}/${MAX_RETRIES})`
+                );
+
+                // Chờ 2 giây trước khi retry để cho yt-dlp cleanup
+                await new Promise(r => setTimeout(r, 2000));
+
+                try {
+                    const voiceChannel = queue?.voiceChannel;
+                    if (voiceChannel) {
+                        await distube.play(voiceChannel, song.url, {
+                            textChannel: textChannel,
+                            member: queue.songs?.[0]?.member || queue.member,
+                        });
+                        return; // Retry thành công, không gửi error message
+                    }
+                } catch (retryError) {
+                    console.error('Auto-retry failed:', retryError.message);
+                }
+            } else {
+                // Đã retry hết số lần
+                retryCount.delete(guildId);
+            }
+        }
+
+        if (!textChannel) return;
 
         if (isConnectionError) {
             textChannel.send(
@@ -136,11 +199,9 @@ function register(distube) {
             );
         } else if (isStreamError && song) {
             const songName = song.name || 'không rõ';
-            const duration = song.formattedDuration || '';
             textChannel.send(
-                `❌ Không thể phát nhạc **${songName}** vì nhạc quá dài` +
-                (duration ? ` (${duration})` : '') +
-                `\n💡 Hãy thử tìm bản ngắn hơn hoặc dùng link khác.`
+                `❌ Stream bị ngắt khi phát **${songName}**` +
+                `\n💡 Hãy dùng \`!p ${song.url || songName}\` để thử lại.`
             );
         } else if (errorCode === 'YTDLP_ERROR') {
             // Lỗi từ yt-dlp — phân tích cụ thể
@@ -163,12 +224,14 @@ function register(distube) {
     // Log và thông báo khi bot bị ngắt kết nối
     distube.on('disconnect', (queue) => {
         console.log(`🔌 Bot đã ngắt kết nối voice (guild: ${queue.id})`);
+        retryCount.delete(queue.id);
         queue.textChannel?.send('🔌 Bot đã ngắt kết nối khỏi kênh thoại.');
     });
 
     // Log khi kênh voice trống
     distube.on('empty', (queue) => {
         console.log(`👻 Kênh voice trống, bot rời kênh (guild: ${queue.id})`);
+        retryCount.delete(queue.id);
         queue.textChannel?.send('👋 Kênh thoại trống, bot đã rời kênh.');
     });
 }

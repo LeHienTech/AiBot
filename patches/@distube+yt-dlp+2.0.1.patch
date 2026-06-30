@@ -1,8 +1,30 @@
 diff --git a/node_modules/@distube/yt-dlp/dist/index.js b/node_modules/@distube/yt-dlp/dist/index.js
-index b17b126..dc93789 100644
+index b17b126..81cfb80 100644
 --- a/node_modules/@distube/yt-dlp/dist/index.js
 +++ b/node_modules/@distube/yt-dlp/dist/index.js
-@@ -74,15 +74,31 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
+@@ -52,6 +52,21 @@ var YTDLP_IS_WINDOWS = e("YTDLP_IS_WINDOWS") || process.platform === "win32";
+ var YTDLP_DIR = e("YTDLP_DIR") || import_path.default.join(__dirname, "..", "bin");
+ var YTDLP_FILENAME = e("YTDLP_FILENAME") || `yt-dlp${YTDLP_IS_WINDOWS ? ".exe" : ""}`;
+ var YTDLP_PATH = import_path.default.join(YTDLP_DIR, YTDLP_FILENAME);
++var COOKIES_PATH = (function() {
++  var fs = require('fs');
++  // Tìm cookies.txt từ project root (lên 3 cấp từ node_modules/@distube/yt-dlp/dist/)
++  var candidates = [
++    import_path.default.join(__dirname, '..', '..', '..', '..', 'cookies.txt'),
++    import_path.default.join(process.cwd(), 'cookies.txt'),
++    'cookies.txt'
++  ];
++  for (var p of candidates) {
++    if (fs.existsSync(p)) return p;
++  }
++  return undefined;
++})();
++if (COOKIES_PATH) console.log('[yt-dlp] Using cookies:', COOKIES_PATH);
++else console.warn('[yt-dlp] No cookies.txt found — YouTube may block requests');
+ 
+ // src/wrapper.ts
+ var makeRequest = /* @__PURE__ */ __name(async (url) => {
+@@ -74,15 +89,31 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
    const process2 = (0, import_node_child_process.spawn)(YTDLP_PATH, args(url, flags), options);
    return new Promise((resolve, reject) => {
      let output = "";
@@ -37,7 +59,7 @@ index b17b126..dc93789 100644
      });
      process2.on("error", reject);
    });
-@@ -141,49 +157,69 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+@@ -141,49 +172,76 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
      return true;
    }
    async resolve(url, options) {
@@ -70,7 +92,7 @@ index b17b126..dc93789 100644
 +      try {
 +        const info = await json(url, {
 +          dumpSingleJson: true,
-+          noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++          noWarnings: true, jsRuntimes: 'node', cookies: COOKIES_PATH,
 +          preferFreeFormats: true,
 +          skipDownload: true,
 +          simulate: true
@@ -92,7 +114,11 @@ index b17b126..dc93789 100644
 +        return new YtDlpSong(this, info, options);
 +      } catch (e2) {
 +        lastError = e2;
-+        console.warn(`[YtDlpPlugin] resolve attempt ${attempt + 1}/${maxRetries} failed: ${e2.message || e2}`);
++        const errMsg = e2.message || String(e2);
++        console.warn(`[YtDlpPlugin] resolve attempt ${attempt + 1}/${maxRetries} failed: ${errMsg}`);
++        // Không retry nếu lỗi không thể fix bằng retry
++        const noRetry = errMsg.includes('not a bot') || errMsg.includes('Sign in') || errMsg.includes('truncated') || errMsg.includes('not available') || errMsg.includes('Private video');
++        if (noRetry) break;
 +        if (attempt < maxRetries - 1) {
 +          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
 +        }
@@ -124,7 +150,7 @@ index b17b126..dc93789 100644
 +      try {
 +        const info = await json(song.url, {
 +          dumpSingleJson: true,
-+          noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++          noWarnings: true, jsRuntimes: 'node', cookies: COOKIES_PATH,
 +          preferFreeFormats: true,
 +          skipDownload: true,
 +          simulate: true,
@@ -134,7 +160,10 @@ index b17b126..dc93789 100644
 +        return info.url;
 +      } catch (e2) {
 +        lastError = e2;
-+        console.warn(`[YtDlpPlugin] getStreamURL attempt ${attempt + 1}/${maxRetries} failed: ${e2.message || e2}`);
++        const errMsg = e2.message || String(e2);
++        console.warn(`[YtDlpPlugin] getStreamURL attempt ${attempt + 1}/${maxRetries} failed: ${errMsg}`);
++        const noRetry = errMsg.includes('not a bot') || errMsg.includes('Sign in') || errMsg.includes('truncated') || errMsg.includes('not available');
++        if (noRetry) break;
 +        if (attempt < maxRetries - 1) {
 +          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
 +        }

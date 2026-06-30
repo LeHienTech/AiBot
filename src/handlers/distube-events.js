@@ -207,6 +207,8 @@ function register(distube) {
             // Lỗi từ yt-dlp — phân tích cụ thể
             if (errorMsg.includes('Sign in') || errorMsg.includes('age')) {
                 textChannel.send('🔞 Video yêu cầu xác minh tuổi, bỏ qua...');
+            } else if (errorMsg.includes('truncated') || errorMsg.includes('Incomplete')) {
+                textChannel.send('❌ Link YouTube bị thiếu hoặc sai! (Incomplete YouTube ID)');
             } else if (errorMsg.includes('not available') || errorMsg.includes('unavailable') || errorMsg.includes('removed')) {
                 textChannel.send('❌ Video không khả dụng hoặc đã bị xóa!');
             } else if (errorMsg.includes('bot') || errorMsg.includes('captcha') || errorMsg.includes('403')) {

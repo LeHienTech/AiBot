@@ -46,6 +46,8 @@ function startProxy() {
                     '--socket-timeout', '30',  // Timeout socket 30 giây (tránh treo vĩnh viễn)
                     '--no-playlist',
                     '--js-runtimes', 'node',
+                    '--extractor-args', 'youtube:player_client=android,web', // Bypass 403 Forbidden
+                    '--force-ipv4',            // Bypass IPv6 blocks which often get 403
                     '--no-abort-on-error',     // Không dừng nếu gặp lỗi nhỏ
                 ];
 

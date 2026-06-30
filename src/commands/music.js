@@ -56,6 +56,8 @@ async function play(message, distube) {
             // Phân tích lỗi yt-dlp cụ thể
             if (errMsg.includes('Sign in') || errMsg.includes('age') || errMsg.includes('confirm your age')) {
                 message.reply('🔞 Video này yêu cầu xác minh tuổi. Hãy thử bài khác!');
+            } else if (errMsg.includes('truncated') || errMsg.includes('Incomplete')) {
+                message.reply('❌ Link YouTube bị thiếu hoặc sai! (Incomplete YouTube ID)');
             } else if (errMsg.includes('not available') || errMsg.includes('Video unavailable') || errMsg.includes('removed')) {
                 message.reply('❌ Video không khả dụng hoặc đã bị xóa!');
             } else if (errMsg.includes('geo') || errMsg.includes('country') || errMsg.includes('blocked')) {

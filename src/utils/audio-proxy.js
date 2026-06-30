@@ -82,13 +82,13 @@ function startProxy() {
                         console.error('[audio-proxy] ⚠️ Stream stall detected (no data for 30s), killing yt-dlp');
                         if (ytdlp && !ytdlp.killed) {
                             ytdlp.kill('SIGTERM');
-                            // Force kill sau 3 giây nếu SIGTERM không work
                             setTimeout(() => {
                                 if (ytdlp && !ytdlp.killed) {
                                     ytdlp.kill('SIGKILL');
                                 }
                             }, 3000);
                         }
+                        if (!res.writableEnded) res.destroy(new Error('Stream stalled for 30s'));
                     }, WATCHDOG_TIMEOUT);
                 };
 
@@ -133,15 +133,20 @@ function startProxy() {
                 ytdlp.on('error', (err) => {
                     console.error('[audio-proxy] yt-dlp spawn error:', err.message);
                     if (watchdogTimer) clearTimeout(watchdogTimer);
-                    if (!res.writableEnded) res.end();
+                    if (!res.writableEnded) res.destroy(new Error(`yt-dlp spawn error: ${err.message}`));
                 });
 
-                ytdlp.on('close', (code) => {
+                ytdlp.on('close', (code, signal) => {
                     if (watchdogTimer) clearTimeout(watchdogTimer);
                     if (code !== 0 && code !== null) {
                         console.error(`[audio-proxy] yt-dlp exit code: ${code}`);
+                        if (!res.writableEnded) res.destroy(new Error(`yt-dlp exited with code ${code}`));
+                    } else if (signal) {
+                        console.error(`[audio-proxy] yt-dlp killed by signal: ${signal}`);
+                        if (!res.writableEnded) res.destroy(new Error(`yt-dlp killed by signal ${signal}`));
+                    } else {
+                        if (!res.writableEnded) res.end();
                     }
-                    if (!res.writableEnded) res.end();
                 });
 
                 // Cleanup khi FFmpeg ngắt (skip, stop, bot rời kênh, etc.)

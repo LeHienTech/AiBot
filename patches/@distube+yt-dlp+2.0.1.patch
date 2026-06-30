@@ -1,41 +1,146 @@
 diff --git a/node_modules/@distube/yt-dlp/dist/index.js b/node_modules/@distube/yt-dlp/dist/index.js
-index b17b126..bfcdba6 100644
+index b17b126..dc93789 100644
 --- a/node_modules/@distube/yt-dlp/dist/index.js
 +++ b/node_modules/@distube/yt-dlp/dist/index.js
-@@ -78,10 +78,14 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
+@@ -74,15 +74,31 @@ var json = /* @__PURE__ */ __name((url, flags, options) => {
+   const process2 = (0, import_node_child_process.spawn)(YTDLP_PATH, args(url, flags), options);
+   return new Promise((resolve, reject) => {
+     let output = "";
++    let stderrOutput = "";
+     process2.stdout?.on("data", (chunk) => {
        output += chunk;
      });
      process2.stderr?.on("data", (chunk) => {
 -      output += chunk;
-+      // Ignore stderr to prevent deprecation warnings from corrupting JSON output
++      // Capture stderr separately for error reporting (not mixed into stdout to avoid JSON corruption)
++      stderrOutput += chunk;
      });
      process2.on("close", (code) => {
 -      if (code === 0) resolve(JSON.parse(output));
+-      else reject(new Error(output));
 +      if (code === 0) {
 +        // Fix: Strip out any Deprecated Feature warnings before parsing
 +        const cleanOutput = output.replace(/^Deprecated Feature:.*?\n/gm, '');
-+        resolve(JSON.parse(cleanOutput));
++        try {
++          resolve(JSON.parse(cleanOutput));
++        } catch (parseErr) {
++          reject(new Error(`yt-dlp JSON parse error: ${parseErr.message}\nstdout: ${cleanOutput.substring(0, 500)}\nstderr: ${stderrOutput.substring(0, 500)}`));
++        }
 +      }
-       else reject(new Error(output));
++      else {
++        // Include stderr in error message so the real error is visible
++        const errorMsg = stderrOutput.trim() || output.trim() || `yt-dlp exited with code ${code}`;
++        const err = new Error(errorMsg);
++        err.stderr = stderrOutput;
++        reject(err);
++      }
      });
      process2.on("error", reject);
-@@ -143,8 +147,7 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+   });
+@@ -141,49 +157,69 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+     return true;
+   }
    async resolve(url, options) {
-     const info = await json(url, {
-       dumpSingleJson: true,
+-    const info = await json(url, {
+-      dumpSingleJson: true,
 -      noWarnings: true,
 -      noCallHome: true,
-+      noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
-       preferFreeFormats: true,
-       skipDownload: true,
-       simulate: true
-@@ -173,8 +176,7 @@ var YtDlpPlugin = class extends import_distube.PlayableExtractorPlugin {
+-      preferFreeFormats: true,
+-      skipDownload: true,
+-      simulate: true
+-    }).catch((e2) => {
+-      throw new import_distube.DisTubeError("YTDLP_ERROR", `${e2.stderr || e2}`);
+-    });
+-    if (isPlaylist(info)) {
+-      if (info.entries.length === 0) throw new import_distube.DisTubeError("YTDLP_ERROR", "The playlist is empty");
+-      return new import_distube.Playlist(
+-        {
+-          source: info.extractor,
+-          songs: info.entries.map((i) => new YtDlpSong(this, i, options)),
+-          id: info.id.toString(),
+-          name: info.title,
+-          url: info.webpage_url,
+-          thumbnail: info.thumbnails?.[0]?.url
+-        },
+-        options
+-      );
++    const maxRetries = 2;
++    let lastError;
++    for (let attempt = 0; attempt < maxRetries; attempt++) {
++      try {
++        const info = await json(url, {
++          dumpSingleJson: true,
++          noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++          preferFreeFormats: true,
++          skipDownload: true,
++          simulate: true
++        });
++        if (isPlaylist(info)) {
++          if (info.entries.length === 0) throw new import_distube.DisTubeError("YTDLP_ERROR", "The playlist is empty");
++          return new import_distube.Playlist(
++            {
++              source: info.extractor,
++              songs: info.entries.map((i) => new YtDlpSong(this, i, options)),
++              id: info.id.toString(),
++              name: info.title,
++              url: info.webpage_url,
++              thumbnail: info.thumbnails?.[0]?.url
++            },
++            options
++          );
++        }
++        return new YtDlpSong(this, info, options);
++      } catch (e2) {
++        lastError = e2;
++        console.warn(`[YtDlpPlugin] resolve attempt ${attempt + 1}/${maxRetries} failed: ${e2.message || e2}`);
++        if (attempt < maxRetries - 1) {
++          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
++        }
++      }
      }
-     const info = await json(song.url, {
-       dumpSingleJson: true,
+-    return new YtDlpSong(this, info, options);
++    throw new import_distube.DisTubeError("YTDLP_ERROR", `${lastError?.message || lastError}`);
+   }
+   async getStreamURL(song) {
+     if (!song.url) {
+       throw new import_distube.DisTubeError("YTDLP_PLUGIN_INVALID_SONG", "Cannot get stream url from invalid song.");
+     }
+-    const info = await json(song.url, {
+-      dumpSingleJson: true,
 -      noWarnings: true,
 -      noCallHome: true,
-+      noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
-       preferFreeFormats: true,
-       skipDownload: true,
-       simulate: true,
+-      preferFreeFormats: true,
+-      skipDownload: true,
+-      simulate: true,
+-      format: "ba/ba*"
+-    }).catch((e2) => {
+-      throw new import_distube.DisTubeError("YTDLP_ERROR", `${e2.stderr || e2}`);
+-    });
+-    if (isPlaylist(info)) throw new import_distube.DisTubeError("YTDLP_ERROR", "Cannot get stream URL of a entire playlist");
+-    return info.url;
++    const maxRetries = 2;
++    let lastError;
++    for (let attempt = 0; attempt < maxRetries; attempt++) {
++      try {
++        const info = await json(song.url, {
++          dumpSingleJson: true,
++          noWarnings: true, jsRuntimes: 'node', cookies: require('fs').existsSync('cookies.txt') ? 'cookies.txt' : undefined,
++          preferFreeFormats: true,
++          skipDownload: true,
++          simulate: true,
++          format: "ba/ba*"
++        });
++        if (isPlaylist(info)) throw new import_distube.DisTubeError("YTDLP_ERROR", "Cannot get stream URL of a entire playlist");
++        return info.url;
++      } catch (e2) {
++        lastError = e2;
++        console.warn(`[YtDlpPlugin] getStreamURL attempt ${attempt + 1}/${maxRetries} failed: ${e2.message || e2}`);
++        if (attempt < maxRetries - 1) {
++          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
++        }
++      }
++    }
++    throw new import_distube.DisTubeError("YTDLP_ERROR", `${lastError?.message || lastError}`);
+   }
+   getRelatedSongs() {
+     return [];

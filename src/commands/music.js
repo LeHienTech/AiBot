@@ -46,10 +46,27 @@ async function play(message, distube) {
     } catch (error) {
         console.error('Lỗi phát nhạc:', error);
         const errMsg = error.message || String(error);
+        const errCode = error.errorCode || '';
+
         if (errMsg.includes('ConnectTimeout') || errMsg.includes('UND_ERR_CONNECT_TIMEOUT') || errMsg.includes('ETIMEDOUT') || errMsg.includes('fetch failed')) {
             message.reply('⏱️ Kết nối bị timeout! Mạng có thể đang chậm. Hãy thử lại sau vài giây.');
         } else if (errMsg.includes('No result') || errMsg.includes('not a supported')) {
             message.reply('❌ Không tìm thấy bài hát hoặc link không hợp lệ!');
+        } else if (errCode === 'YTDLP_ERROR') {
+            // Phân tích lỗi yt-dlp cụ thể
+            if (errMsg.includes('Sign in') || errMsg.includes('age') || errMsg.includes('confirm your age')) {
+                message.reply('🔞 Video này yêu cầu xác minh tuổi. Hãy thử bài khác!');
+            } else if (errMsg.includes('not available') || errMsg.includes('Video unavailable') || errMsg.includes('removed')) {
+                message.reply('❌ Video không khả dụng hoặc đã bị xóa!');
+            } else if (errMsg.includes('geo') || errMsg.includes('country') || errMsg.includes('blocked')) {
+                message.reply('🌍 Video bị chặn ở khu vực này! Hãy thử bài khác.');
+            } else if (errMsg.includes('bot') || errMsg.includes('captcha') || errMsg.includes('403')) {
+                message.reply('🤖 YouTube đang chặn bot! Hãy thử lại sau vài phút.');
+            } else if (errMsg.includes('Private video') || errMsg.includes('private')) {
+                message.reply('🔒 Video này ở chế độ riêng tư!');
+            } else {
+                message.reply('❌ Không thể phát bài này! Hãy thử bài khác hoặc thử lại sau.');
+            }
         } else {
             message.reply('❌ Có lỗi xảy ra khi phát nhạc! Hãy thử một bài khác.');
         }

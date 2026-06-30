@@ -106,6 +106,7 @@ function register(distube) {
     // Xử lý lỗi DisTube (v5: error event = (error, queue, song))
     distube.on('error', (error, queue, song) => {
         const errorMsg = error.message || String(error);
+        const errorCode = error.errorCode || '';
         console.error('DisTube error:', errorMsg);
         const textChannel = queue?.textChannel;
         if (!textChannel) return;
@@ -141,8 +142,21 @@ function register(distube) {
                 (duration ? ` (${duration})` : '') +
                 `\n💡 Hãy thử tìm bản ngắn hơn hoặc dùng link khác.`
             );
+        } else if (errorCode === 'YTDLP_ERROR') {
+            // Lỗi từ yt-dlp — phân tích cụ thể
+            if (errorMsg.includes('Sign in') || errorMsg.includes('age')) {
+                textChannel.send('🔞 Video yêu cầu xác minh tuổi, bỏ qua...');
+            } else if (errorMsg.includes('not available') || errorMsg.includes('unavailable') || errorMsg.includes('removed')) {
+                textChannel.send('❌ Video không khả dụng hoặc đã bị xóa!');
+            } else if (errorMsg.includes('bot') || errorMsg.includes('captcha') || errorMsg.includes('403')) {
+                textChannel.send('🤖 YouTube đang chặn bot! Hãy thử lại sau vài phút.');
+            } else if (errorMsg.includes('Private video') || errorMsg.includes('private')) {
+                textChannel.send('🔒 Video này ở chế độ riêng tư!');
+            } else {
+                textChannel.send(`❌ Lỗi yt-dlp: Không thể xử lý video${song ? ` **${song.name || ''}**` : ''}. Hãy thử bài khác!`);
+            }
         } else {
-            textChannel.send(`❌ Đã xảy ra lỗi: ${errorMsg}`);
+            textChannel.send(`❌ Đã xảy ra lỗi: ${errorMsg.substring(0, 200)}`);
         }
     });
 

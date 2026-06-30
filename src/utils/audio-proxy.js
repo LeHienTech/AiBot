@@ -92,6 +92,13 @@ function startProxy() {
                     }, WATCHDOG_TIMEOUT);
                 };
 
+                const pauseWatchdog = () => {
+                    if (watchdogTimer) {
+                        clearTimeout(watchdogTimer);
+                        watchdogTimer = null;
+                    }
+                };
+
                 // Bắt đầu watchdog
                 resetWatchdog();
 
@@ -103,8 +110,10 @@ function startProxy() {
                         const canWrite = res.write(chunk);
                         if (!canWrite) {
                             ytdlp.stdout.pause();
+                            pauseWatchdog(); // Tạm dừng watchdog vì yt-dlp đang bị pause chờ FFmpeg
                             res.once('drain', () => {
                                 ytdlp.stdout.resume();
+                                resetWatchdog(); // Tiếp tục watchdog
                             });
                         }
                     }

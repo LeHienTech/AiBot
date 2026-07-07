@@ -37,7 +37,7 @@ async function callAI(systemPrompt, userPrompt, context = '', options = {}) {
     let response;
     for (let v = 0; v < contextVersions.length; v++) {
         const currentPrompt = contextVersions[v];
-        let retries = 2;
+        let retries = 3;
         let success = false;
 
         while (retries > 0) {
@@ -90,9 +90,9 @@ async function planSearchStrategy(userPrompt) {
 Nếu cần tìm kiếm, hãy bẻ nhỏ câu hỏi thành mảng các từ khóa tìm kiếm (số lượng từ khóa tùy thuộc vào độ phức tạp của câu hỏi).
 Trả về ĐÚNG định dạng JSON sau, không giải thích thêm:
 {
-  "requires_search": true/false,
+  "requires_search": true,
   "reasoning": "Lý do ngắn gọn",
-  "sub_queries": ["từ khóa 1", "từ khóa 2", "..."]
+  "sub_queries": [] // Điền các từ khóa vào đây (từ 1 đến 5 từ khóa tùy ý)
 }`;
 
     try {

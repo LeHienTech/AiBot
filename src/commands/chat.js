@@ -24,7 +24,11 @@ function simplifyQuery(userPrompt) {
  */
 async function analyzeIntent(userPrompt) {
     try {
-        const intentPrompt = `Bạn là một hệ thống phân tích ý định. Nhiệm vụ của bạn là xem câu nói của người dùng có cần tìm kiếm thông tin trên mạng (tin tức, sự kiện mới, kiến thức cụ thể, giá cả, thông tin có thật) hay chỉ là giao tiếp bình thường (chào hỏi, tâm sự).
+        const intentPrompt = `Bạn là một hệ thống phân tích ý định. Nhiệm vụ của bạn là quyết định xem câu nói của người dùng có BẮT BUỘC phải tìm kiếm trên mạng hay không.
+
+- CHỈ TÌM KIẾM (needs_search: true) khi người dùng hỏi về: Tin tức mới nhất, sự kiện hiện thời, giá cả cập nhật, hoặc thông tin thời sự thực tế.
+- KHÔNG TÌM KIẾM (needs_search: false) khi người dùng: Chào hỏi, tâm sự, yêu cầu lên ý tưởng (brainstorm), sáng tạo nội dung, làm thơ, viết code, giải toán, hoặc kiến thức bách khoa thông thường.
+
 Trả về ĐÚNG định dạng JSON sau, không kèm bất kỳ lời giải thích nào:
 {
   "needs_search": true/false,

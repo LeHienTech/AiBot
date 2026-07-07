@@ -38,7 +38,7 @@ async function getWeatherContext(query) {
         const stopWords = ['như thế nào', 'ra sao', 'thế nào', 'mấy độ', 'bao nhiêu độ', 'có mưa không', 'có nắng không', 'không', 'vậy', 'nhỉ', '?'];
         let cleanCity = city.toLowerCase();
         for (const w of stopWords) {
-            cleanCity = cleanCity.replace(new RegExp(w, 'gi'), '').trim();
+            cleanCity = cleanCity.replaceAll(w, '').trim();
         }
         city = cleanCity;
     }

@@ -55,14 +55,35 @@ async function execute(message) {
             };
         }
 
-        const response = await axios.post(AI_CONFIG.URL, {
-            model: AI_CONFIG.MODEL,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            temperature: AI_CONFIG.TEMPERATURE,
-        }, requestConfig);
+        // ─── Xây dựng payload để tránh lỗi 500 của Google API ───
+        // Kết hợp system và user prompt thành 1 message duy nhất (Role: user)
+        // Vì API tương thích OpenAI của Google đôi khi bị lỗi 500 với role: 'system' trên các model Gemma
+        const combinedPrompt = `${systemPrompt}\n\n--- CÂU HỎI CỦA NGƯỜI DÙNG ---\n${userPrompt}`;
+
+        let response;
+        let retries = 3;
+        
+        while (retries > 0) {
+            try {
+                response = await axios.post(AI_CONFIG.URL, {
+                    model: AI_CONFIG.MODEL,
+                    messages: [
+                        { role: 'user', content: combinedPrompt }
+                    ],
+                    temperature: AI_CONFIG.TEMPERATURE,
+                }, requestConfig);
+                
+                break; // Thành công thì thoát vòng lặp
+            } catch (err) {
+                retries--;
+                if (retries === 0) throw err;
+                
+                const status = err.response?.status || 'Unknown';
+                console.warn(`⚠️ API lỗi ${status}, đang thử lại... (${retries} lần còn lại)`);
+                // Nghỉ 2 giây trước khi thử lại để tránh rate limit
+                await new Promise(res => setTimeout(res, 2000));
+            }
+        }
 
         let aiReply = response.data.choices[0].message.content.trim();
 

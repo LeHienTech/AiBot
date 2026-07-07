@@ -93,9 +93,9 @@ async function ddgHtmlScrape(query) {
                 const source = _$(mainSel).length > 0 ? _$(mainSel) : _$('body');
 
                 const paragraphs = [];
-                source.find('p, h2, h3').each((i, el) => {
+                source.find('p, h2, h3, li, div.text').each((i, el) => {
                     const text = _$(el).text().replace(/\s+/g, ' ').trim();
-                    if (text.length > 60 && !text.match(/^(menu|navigation|login|copyright)/i)) {
+                    if (text.length > 30 && !text.match(/^(menu|navigation|login|copyright|create your free account|sign in)/i)) {
                         paragraphs.push(text);
                     }
                 });

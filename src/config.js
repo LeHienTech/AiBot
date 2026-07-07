@@ -27,7 +27,7 @@ const YT_DLP_PATH = path.join(
 // LM Studio config
 const LM_STUDIO = {
     URL: 'http://127.0.0.1:1234/v1/chat/completions',
-    MODEL: 'qwen2.5-7b-instruct',
+    MODEL: 'gemma-4-31b-it',
     TEMPERATURE: 0.3,
     MAX_TOKENS: 512,
 };

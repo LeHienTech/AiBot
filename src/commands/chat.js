@@ -62,7 +62,6 @@ async function execute(message) {
                 { role: 'user', content: userPrompt }
             ],
             temperature: AI_CONFIG.TEMPERATURE,
-            max_tokens: AI_CONFIG.MAX_TOKENS,
         }, requestConfig);
 
         let aiReply = response.data.choices[0].message.content.trim();

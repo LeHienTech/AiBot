@@ -29,7 +29,6 @@ const AI_CONFIG = {
     MODEL: process.env.AI_MODEL || 'gemma-4-31b-it',
     API_KEY: process.env.AI_API_KEY || '',
     TEMPERATURE: 0.3,
-    MAX_TOKENS: 512,
 };
 
 // Discord message limit

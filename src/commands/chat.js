@@ -183,12 +183,37 @@ async function execute(message) {
         aiReply = aiReply.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
         aiReply = aiReply.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
-        // Discord giới hạn 2000 ký tự
-        if (aiReply.length > DISCORD_MAX_LENGTH) {
-            aiReply = aiReply.substring(0, DISCORD_MAX_LENGTH - 3) + '...';
+        // Discord giới hạn 2000 ký tự - Chia nhỏ tin nhắn nếu quá dài
+        const chunks = [];
+        while (aiReply.length > 0) {
+            if (aiReply.length <= DISCORD_MAX_LENGTH) {
+                chunks.push(aiReply);
+                break;
+            }
+            
+            // Tìm vị trí xuống dòng gần nhất trong giới hạn
+            let splitIndex = aiReply.lastIndexOf('\n', DISCORD_MAX_LENGTH);
+            if (splitIndex === -1) {
+                // Tìm vị trí dấu cách gần nhất
+                splitIndex = aiReply.lastIndexOf(' ', DISCORD_MAX_LENGTH);
+            }
+            if (splitIndex === -1 || splitIndex === 0) {
+                // Cắt cứng nếu không có dấu cách
+                splitIndex = DISCORD_MAX_LENGTH;
+            }
+            
+            chunks.push(aiReply.substring(0, splitIndex));
+            aiReply = aiReply.substring(splitIndex).trim();
         }
 
-        await message.reply(aiReply);
+        // Gửi tuần tự các đoạn tin nhắn
+        for (let i = 0; i < chunks.length; i++) {
+            if (i === 0) {
+                await message.reply(chunks[i]);
+            } else {
+                await message.channel.send(chunks[i]);
+            }
+        }
 
     } catch (error) {
         console.error('Lỗi kết nối AI API:', error.message);

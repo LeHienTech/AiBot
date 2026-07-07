@@ -83,12 +83,12 @@ async function planSearchStrategy(userPrompt) {
 - CHỈ TÌM KIẾM (requires_search: true) khi hỏi về: Tin tức, sự kiện mới, thời sự, giá cả cập nhật, nhân vật nổi tiếng, hoặc số liệu có thật.
 - KHÔNG TÌM KIẾM (requires_search: false) khi: Chào hỏi, tâm sự, yêu cầu lên ý tưởng (brainstorm), sáng tạo, làm thơ, viết code, làm toán, hoặc kiến thức bách khoa cơ bản.
 
-Nếu cần tìm kiếm, hãy bẻ nhỏ câu hỏi thành các từ khóa tìm kiếm trên Google (tối đa 5 từ khóa).
+Nếu cần tìm kiếm, hãy bẻ nhỏ câu hỏi thành mảng các từ khóa tìm kiếm (số lượng từ khóa tùy thuộc vào độ phức tạp của câu hỏi).
 Trả về ĐÚNG định dạng JSON sau, không giải thích thêm:
 {
   "requires_search": true/false,
   "reasoning": "Lý do ngắn gọn",
-  "sub_queries": ["từ khóa 1", "từ khóa 2", "từ khóa 3", "từ khóa 4", "từ khóa 5"]
+  "sub_queries": ["từ khóa 1", "từ khóa 2", "..."]
 }`;
 
     try {

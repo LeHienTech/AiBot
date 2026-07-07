@@ -2,138 +2,131 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { TIMEOUTS } = require('../config');
 
-/**
- * Tìm kiếm web qua DuckDuckGo Instant Answer API
- * @param {string} query - Câu tìm kiếm
- * @returns {string} - Kết quả tìm kiếm hoặc chuỗi rỗng
- */
-async function ddgInstantAnswer(query) {
-    try {
-        const ddgApiUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1&kl=vn-vi`;
-        const ddgApiRes = await axios.get(ddgApiUrl, {
-            timeout: TIMEOUTS.DDG_API,
-            headers: { 'User-Agent': 'Mozilla/5.0 (Discord Bot)' }
-        });
-
-        const d = ddgApiRes.data;
-        const parts = [];
-
-        if (d.Answer) parts.push(`[Đáp án trực tiếp] ${d.Answer}`);
-        if (d.Abstract) parts.push(`[Tóm tắt] ${d.Abstract}`);
-        if (d.Definition) parts.push(`[Định nghĩa] ${d.Definition}`);
-        if (d.RelatedTopics?.length > 0) {
-            d.RelatedTopics
-                .filter(t => t.Text?.length > 20)
-                .slice(0, 3)
-                .forEach(t => parts.push(t.Text));
-        }
-
-        if (parts.length > 0) {
-            const result = parts.join('\n');
-            console.log(`✅ [DDG API] ${parts.length} mục: ${result.substring(0, 200)}...`);
-            return result;
-        }
-    } catch (e) {
-        console.log('⚠️ [DDG API] Lỗi:', e.message);
+// Lấy URL thực từ link trung gian của DDG
+function extractDdgUrl(href) {
+    if (href?.includes('uddg=')) {
+        return decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
+    } else if (href?.startsWith('http')) {
+        return href;
     }
-
-    return '';
+    return null;
 }
 
 /**
- * HTML Scrape + Deep Scrape từ DuckDuckGo (fallback)
- * @param {string} query - Câu tìm kiếm
- * @returns {string} - Nội dung scrape hoặc chuỗi rỗng
+ * HTML Scrape từ DuckDuckGo để lấy Top URLs từ mảng các queries
  */
-async function ddgHtmlScrape(query) {
-    try {
-        const ddgHtmlUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=vn-vi`;
-        const ddgRes = await axios.get(ddgHtmlUrl, {
-            timeout: TIMEOUTS.DDG_HTML,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8'
-            }
-        });
+async function getTopUrlsFromQueries(queries) {
+    const urls = new Set();
+    const snippets = [];
 
-        const $ = cheerio.load(ddgRes.data);
-        const snippets = [];
-        let firstUrl = null;
-
-        $('.result').each((i, el) => {
-            if (i >= 3) return false;
-
-            const snippet = $(el).find('.result__snippet').text().trim();
-            if (snippet.length > 30) snippets.push(snippet);
-
-            if (i === 0) {
-                const href = $(el).find('.result__a').attr('href');
-                if (href?.includes('uddg=')) {
-                    firstUrl = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
-                } else if (href?.startsWith('http')) {
-                    firstUrl = href;
+    for (const query of queries) {
+        if (urls.size >= 3) break;
+        try {
+            const ddgHtmlUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=vn-vi`;
+            const ddgRes = await axios.get(ddgHtmlUrl, {
+                timeout: TIMEOUTS.DDG_HTML,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                    'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8'
                 }
-            }
-        });
+            });
 
-        // Deep Scrape: truy cập URL đầu tiên
-        if (firstUrl?.startsWith('http')) {
+            const $ = cheerio.load(ddgRes.data);
+
+            $('.result').each((i, el) => {
+                if (urls.size >= 3) return false;
+
+                const snippet = $(el).find('.result__snippet').text().trim();
+                if (snippet.length > 30) snippets.push(snippet);
+
+                const href = $(el).find('.result__a').attr('href');
+                const url = extractDdgUrl(href);
+                // Bỏ qua mạng xã hội và video vì bot không đọc được
+                if (url && !url.includes('youtube.com') && !url.includes('facebook.com') && !url.includes('tiktok.com')) {
+                    urls.add(url);
+                }
+            });
+        } catch (e) {
+            console.log(`⚠️ [DDG HTML] Lỗi tìm kiếm "${query}":`, e.message);
+        }
+    }
+
+    return { urls: Array.from(urls), snippets };
+}
+
+/**
+ * Deep Scrape một mảng các URLs song song
+ */
+async function deepScrapeUrls(urls, fallbackSnippets) {
+    console.log(`🔍 [Deep Scrape] Chuẩn bị cào ${urls.length} URLs...`);
+    const promises = urls.map(url => axios.get(url, {
+        timeout: TIMEOUTS.DEEP_SCRAPE,
+        maxRedirects: 3,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    }).then(res => ({ url, data: res.data })));
+
+    const results = await Promise.allSettled(promises);
+    const contextParts = [];
+
+    for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        if (result.status === 'fulfilled') {
             try {
-                console.log(`🔍 [Deep Scrape] URL: ${firstUrl}`);
-                const articleRes = await axios.get(firstUrl, {
-                    timeout: TIMEOUTS.DEEP_SCRAPE,
-                    maxRedirects: 3,
-                    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-                });
-
-                const _$ = cheerio.load(articleRes.data);
+                const { url, data } = result.value;
+                const _$ = cheerio.load(data);
                 _$('script, style, nav, header, footer, aside, .ads, .sidebar, .menu').remove();
 
                 const mainSel = 'article, main, [role="main"], .content, .article-body, .post-content, #content';
                 const source = _$(mainSel).length > 0 ? _$(mainSel) : _$('body');
 
                 const paragraphs = [];
-                source.find('p, h2, h3, li, div.text').each((i, el) => {
+                source.find('p, h2, h3, li, div.text').each((_, el) => {
                     const text = _$(el).text().replace(/\s+/g, ' ').trim();
                     if (text.length > 30 && !text.match(/^(menu|navigation|login|copyright|create your|sign in|what can you do|by creating a|join the community|forgot password)/i)) {
                         paragraphs.push(text);
                     }
                 });
 
-                const deepContent = paragraphs.slice(0, 8).join(' | ');
-                const result = deepContent.length > 200
-                    ? deepContent.substring(0, 2000)
-                    : snippets.join(' | ');
-
-                console.log(`✅ [Deep Scrape] OK: ${result.substring(0, 200)}...`);
-                return result;
+                const content = paragraphs.slice(0, 15).join(' | ');
+                if (content.length > 100) {
+                    contextParts.push(`[Nguồn: ${url}]\n${content.substring(0, 2000)}`);
+                    console.log(`✅ [Deep Scrape] Lấy thành công: ${url}`);
+                }
             } catch (e) {
-                console.log('⚠️ [Deep Scrape] Thất bại:', e.message);
-                return snippets.join(' | ');
+                console.log(`⚠️ [Deep Scrape] Lỗi bóc tách ${urls[i]}:`, e.message);
             }
+        } else {
+            console.log(`⚠️ [Deep Scrape] Thất bại truy cập ${urls[i]}:`, result.reason.message);
         }
+    }
 
-        return snippets.join(' | ');
-    } catch (e) {
-        console.log('⚠️ [HTML Scrape] Lỗi:', e.message);
+    if (contextParts.length > 0) {
+        return contextParts.join('\n\n');
+    }
+    
+    if (fallbackSnippets.length > 0) {
+        return `[Nguồn: DuckDuckGo Snippets]\n${fallbackSnippets.join(' | ').substring(0, 2000)}`;
     }
 
     return '';
 }
 
 /**
- * Tìm kiếm web tổng hợp: DDG API → HTML Scrape → Deep Scrape
- * @param {string} query - Câu tìm kiếm
- * @returns {string} - Kết quả tìm kiếm hoặc chuỗi rỗng
+ * Tìm kiếm web tổng hợp cho RAG
+ * @param {string|string[]} queries - Câu tìm kiếm hoặc mảng từ khóa
  */
-async function searchWeb(query) {
-    // Thử DDG Instant Answer API trước
-    let result = await ddgInstantAnswer(query);
-    if (result) return result;
+async function searchWeb(queries) {
+    const queryArray = Array.isArray(queries) ? queries : [queries];
+    console.log(`🔍 [Web Search] Bắt đầu tìm kiếm:`, queryArray);
 
-    // Fallback: HTML Scrape + Deep Scrape
-    result = await ddgHtmlScrape(query);
-    return result;
+    const { urls, snippets } = await getTopUrlsFromQueries(queryArray);
+    
+    if (urls.length === 0) {
+        if (snippets.length > 0) return `[Nguồn: DuckDuckGo Snippets]\n${snippets.join(' | ').substring(0, 2000)}`;
+        return '';
+    }
+
+    return await deepScrapeUrls(urls, snippets);
 }
 
 module.exports = { searchWeb };

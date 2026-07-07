@@ -100,8 +100,17 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
         }
     }
 
+    const MAX_TOTAL_CONTEXT = 6000;
+    let totalLen = 0;
+
     if (contextParts.length > 0) {
-        return contextParts.join('\n\n');
+        const trimmed = [];
+        for (const part of contextParts) {
+            if (totalLen + part.length > MAX_TOTAL_CONTEXT) break;
+            trimmed.push(part);
+            totalLen += part.length;
+        }
+        return trimmed.join('\n\n');
     }
     
     if (fallbackSnippets.length > 0) {

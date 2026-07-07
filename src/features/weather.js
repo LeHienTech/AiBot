@@ -35,7 +35,7 @@ async function getWeatherContext(query) {
 
     // ─── Lọc bỏ các từ để hỏi khỏi tên thành phố ───
     if (city) {
-        const stopWords = ['như thế nào', 'ra sao', 'thế nào', 'mấy độ', 'bao nhiêu độ', 'có mưa không', 'có nắng không', 'không', 'vậy', 'nhỉ', '?'];
+        const stopWords = ['như thế nào', 'ra sao', 'thế nào', 'mấy độ', 'bao nhiêu độ', 'có mưa không', 'có nắng không', 'không', 'vậy', 'nhỉ', '?', 'ở', 'tại'];
         let cleanCity = city.toLowerCase();
         for (const w of stopWords) {
             cleanCity = cleanCity.replaceAll(w, '').trim();

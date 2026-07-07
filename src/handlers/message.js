@@ -15,9 +15,11 @@ function register(client) {
         const distube = client.distube;
         const content = message.content;
 
-        // ─── 1A. Kiểm tra NSFW ───
-        const isNsfw = await nsfwDetector.checkMessage(message);
-        if (isNsfw) return;
+        // ─── 1A. Kiểm tra NSFW (chỉ khi có ảnh đính kèm) ───
+        if (message.attachments.size > 0) {
+            const isNsfw = await nsfwDetector.checkMessage(message);
+            if (isNsfw) return;
+        }
 
         // ─── 1B. Kiểm duyệt từ ngữ ───
         const isBadWord = await moderation.checkMessage(message);

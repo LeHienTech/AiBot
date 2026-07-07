@@ -3,6 +3,22 @@ const { getWeatherContext } = require('../features/weather');
 const { searchWeb } = require('../features/web-search');
 const { AI_CONFIG, DISCORD_MAX_LENGTH } = require('../config');
 
+// Từ hỏi tiếng Việt phổ biến — dùng cho fallback khi AI lỗi
+const QUESTION_WORDS = ['là gì', 'như thế nào', 'thế nào', 'ra sao', 'bao giờ', 'khi nào', 'ở đâu', 'bao nhiêu', 'có không', 'phải không', 'à', 'vậy', 'nhỉ', 'hả', '?'];
+
+/**
+ * Fallback: cắt gọn câu hỏi thô thành từ khóa tìm kiếm
+ */
+function simplifyQuery(userPrompt) {
+    let q = userPrompt.toLowerCase();
+    for (const w of QUESTION_WORDS) {
+        q = q.replaceAll(w, '').trim();
+    }
+    // Chỉ giữ tối đa 8 từ đầu tiên
+    const words = q.split(/\s+/).filter(w => w.length > 1).slice(0, 8);
+    return words.join(' ') || userPrompt.slice(0, 60);
+}
+
 /**
  * Phân tích ý định người dùng để tạo Search Queries
  */
@@ -48,7 +64,8 @@ ${userPrompt}`;
         return JSON.parse(result);
     } catch (e) {
         console.error('⚠️ [Intent] Lỗi phân tích ý định, dùng fallback:', e.message);
-        return { needs_search: true, queries: [userPrompt] };
+        // Fix #2: Cắt gọn câu hỏi thô thay vì ném nguyên câu tiếng Việt dài
+        return { needs_search: true, queries: [simplifyQuery(userPrompt)] };
     }
 }
 
@@ -62,23 +79,25 @@ async function execute(message) {
     try {
         await message.channel.sendTyping();
 
-        // ─── Bước 1: Phân tích Ý định & Tạo Câu lệnh ───
         let webContext = '';
-        const intent = await analyzeIntent(userPrompt);
-        
-        if (intent.needs_search && intent.queries && intent.queries.length > 0) {
-            console.log('🔍 [Intent] Cần tìm kiếm:', intent.queries);
-            
-            // Ưu tiên Weather API nếu là câu hỏi thời tiết
-            const weatherContext = await getWeatherContext(userPrompt);
-            if (weatherContext) {
-                webContext = weatherContext;
-            } else {
-                // ─── Bước 2 & 3: Truy xuất và Lọc thông tin mạng (Top 3 sites) ───
-                webContext = await searchWeb(intent.queries);
-            }
+
+        // ─── Fix #3 & #5: Check Weather TRƯỚC khi gọi AI phân tích ý định ───
+        // Weather check bằng regex (0ms) → nhanh hơn 3-5 giây so với gọi AI trước
+        const weatherContext = await getWeatherContext(userPrompt);
+        if (weatherContext) {
+            webContext = weatherContext;
+            console.log('🌤️ [Weather] Đã lấy dữ liệu thời tiết, bỏ qua phân tích ý định.');
         } else {
-            console.log('🔍 [Intent] Giao tiếp bình thường, không search.');
+            // ─── Bước 1: Phân tích Ý định & Tạo Câu lệnh (chỉ khi KHÔNG phải thời tiết) ───
+            const intent = await analyzeIntent(userPrompt);
+            
+            if (intent.needs_search && intent.queries && intent.queries.length > 0) {
+                console.log('🔍 [Intent] Cần tìm kiếm:', intent.queries);
+                // ─── Bước 2 & 3: Truy xuất và Lọc thông tin mạng (Top 5 sites) ───
+                webContext = await searchWeb(intent.queries);
+            } else {
+                console.log('🔍 [Intent] Giao tiếp bình thường, không search.');
+            }
         }
 
         // ─── Bước 4: Nạp vào Ngữ cảnh ───

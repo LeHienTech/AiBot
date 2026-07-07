@@ -95,7 +95,7 @@ async function ddgHtmlScrape(query) {
                 const paragraphs = [];
                 source.find('p, h2, h3, li, div.text').each((i, el) => {
                     const text = _$(el).text().replace(/\s+/g, ' ').trim();
-                    if (text.length > 30 && !text.match(/^(menu|navigation|login|copyright|create your free account|sign in)/i)) {
+                    if (text.length > 30 && !text.match(/^(menu|navigation|login|copyright|create your|sign in|what can you do|by creating a|join the community|forgot password)/i)) {
                         paragraphs.push(text);
                     }
                 });

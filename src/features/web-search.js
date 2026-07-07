@@ -84,7 +84,7 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
                 const source = _$(mainSel).length > 0 ? _$(mainSel) : _$('body');
 
                 const paragraphs = [];
-                source.find('p, h2, h3, li, div.text').each((_, el) => {
+                source.find('p, h2, h3, li, div.text, td, th, span').each((_, el) => {
                     const text = _$(el).text().replace(/\s+/g, ' ').trim();
                     if (text.length > 30 && !text.match(/^(menu|navigation|login|copyright|create your|sign in|what can you do|by creating a|join the community|forgot password)/i)) {
                         paragraphs.push(text);
@@ -104,8 +104,15 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
         }
     }
 
+    let finalContext = '';
+    
+    // LUÔN LUÔN đính kèm các Snippets từ DuckDuckGo vào đầu (vì chúng chứa câu trả lời rút gọn rất giá trị, thường có sẵn tỷ giá, giá vàng, v.v.)
+    if (fallbackSnippets.length > 0) {
+        finalContext += `[Nguồn: DuckDuckGo Snippets (Tóm tắt nhanh từ bộ máy tìm kiếm)]\n${fallbackSnippets.join(' | ').substring(0, 3000)}\n\n`;
+    }
+
     if (contextParts.length > 0) {
-        // Giảm giới hạn tổng xuống mức an toàn (12000) vì payload 25000 ký tự làm sập API miễn phí (Lỗi 500)
+        // Giảm giới hạn tổng xuống mức an toàn (12000) vì payload quá lớn làm sập API miễn phí (Lỗi 500)
         const MAX_TOTAL_CONTEXT = 12000; 
         // Đảm bảo mỗi trang web có ít nhất 1000 ký tự (đủ để AI lấy thông tin chính)
         const budgetPerPart = Math.max(1000, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
@@ -117,14 +124,10 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
             return part;
         });
         
-        return trimmed.join('\n\n');
+        finalContext += trimmed.join('\n\n');
     }
     
-    if (fallbackSnippets.length > 0) {
-        return `[Nguồn: DuckDuckGo Snippets]\n${fallbackSnippets.join(' | ').substring(0, 2000)}`;
-    }
-
-    return '';
+    return finalContext.trim();
 }
 
 /**

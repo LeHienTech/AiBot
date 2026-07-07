@@ -23,12 +23,23 @@ ${userPrompt}`;
             requestConfig.headers = { 'Authorization': `Bearer ${AI_CONFIG.API_KEY}` };
         }
 
-        const response = await axios.post(AI_CONFIG.URL, {
-            model: AI_CONFIG.MODEL,
-            messages: [{ role: 'user', content: intentPrompt }],
-            temperature: 0.1,
-            response_format: { type: 'json_object' }
-        }, requestConfig);
+        let response;
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                response = await axios.post(AI_CONFIG.URL, {
+                    model: AI_CONFIG.MODEL,
+                    messages: [{ role: 'user', content: intentPrompt }],
+                    temperature: 0.1
+                }, requestConfig);
+                break;
+            } catch (err) {
+                retries--;
+                if (retries === 0) throw err;
+                console.warn(`⚠️ [Intent] API lỗi ${err.response?.status || 500}, đang thử lại...`);
+                await new Promise(res => setTimeout(res, 2000));
+            }
+        }
 
         let result = response.data.choices[0].message.content.trim();
         result = result.replace(/<thought>[\s\S]*?<\/thought>/gi, '').trim();
@@ -118,7 +129,7 @@ async function execute(message) {
                 if (retries === 0) throw err;
                 const status = err.response?.status || 'Unknown';
                 console.warn(`⚠️ API lỗi ${status}, đang thử lại... (${retries} lần còn lại)`);
-                await new Promise(res => setTimeout(res, 2000));
+                await new Promise(res => setTimeout(res, 5000));
             }
         }
 

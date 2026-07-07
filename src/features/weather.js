@@ -33,9 +33,19 @@ async function getWeatherContext(query) {
         }
     }
 
-    if (!city) {
-        console.log('⚠️ [Weather] Không trích xuất được tên thành phố từ:', query);
-        return null;
+    // ─── Lọc bỏ các từ để hỏi khỏi tên thành phố ───
+    if (city) {
+        const stopWords = ['như thế nào', 'ra sao', 'thế nào', 'mấy độ', 'bao nhiêu độ', 'có mưa không', 'có nắng không', 'không', 'vậy', 'nhỉ', '?'];
+        let cleanCity = city.toLowerCase();
+        for (const w of stopWords) {
+            cleanCity = cleanCity.replace(new RegExp(w, 'gi'), '').trim();
+        }
+        city = cleanCity;
+    }
+
+    if (!city || city.length < 2) {
+        console.log('⚠️ [Weather] Không tìm thấy tên thành phố cụ thể, dùng mặc định Hà Nội.');
+        city = 'Hanoi'; 
     }
 
     // ─── Gọi wttr.in: miễn phí, không cần API key ───

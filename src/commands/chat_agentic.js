@@ -42,10 +42,13 @@ async function callAI(systemPrompt, userPrompt, context = '', options = {}) {
 
         while (retries > 0) {
             try {
+                // Lọc bỏ các ký tự ẩn (control characters) từ web có thể làm hỏng JSON hoặc gây lỗi 500 cho API AI
+                const sanitizedPrompt = currentPrompt.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F]/g, '');
+                
                 response = await axios.post(AI_CONFIG.URL, {
                     model: AI_CONFIG.MODEL,
                     messages: [
-                        { role: 'user', content: currentPrompt }
+                        { role: 'user', content: sanitizedPrompt }
                     ],
                     temperature: temperature,
                 }, requestConfig);
@@ -54,7 +57,8 @@ async function callAI(systemPrompt, userPrompt, context = '', options = {}) {
             } catch (err) {
                 retries--;
                 const status = err.response?.status || 'Unknown';
-                console.warn(`⚠️ [AI] Lỗi ${status}, thử lại... (còn ${retries} lần, context v${v + 1}/${contextVersions.length})`);
+                const errorData = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+                console.warn(`⚠️ [AI] Lỗi ${status}: ${errorData} | Thử lại... (còn ${retries} lần, context v${v + 1}/${contextVersions.length})`);
                 await new Promise(res => setTimeout(res, 2000));
             }
         }

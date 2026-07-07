@@ -20,7 +20,7 @@ async function getTopUrlsFromQueries(queries) {
     const snippets = [];
 
     for (const query of queries) {
-        if (urls.size >= 3) break;
+        if (urls.size >= 5) break;
         try {
             const ddgHtmlUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=vn-vi`;
             const ddgRes = await axios.get(ddgHtmlUrl, {
@@ -34,7 +34,7 @@ async function getTopUrlsFromQueries(queries) {
             const $ = cheerio.load(ddgRes.data);
 
             $('.result').each((i, el) => {
-                if (urls.size >= 3) return false;
+                if (urls.size >= 5) return false;
 
                 const snippet = $(el).find('.result__snippet').text().trim();
                 if (snippet.length > 30) snippets.push(snippet);

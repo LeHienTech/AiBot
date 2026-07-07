@@ -102,20 +102,24 @@ Trả về ĐÚNG định dạng JSON sau, không giải thích thêm:
 
 // ─── BƯỚC 2: EXECUTOR (TÌM KIẾM THỰC TẾ) ───
 async function executeSearchPhase(plan, userPrompt) {
+    let combinedContext = '';
+
     // Luôn ưu tiên check thời tiết bằng regex trước vì nó nhanh nhất (0ms)
     const weatherContext = await getWeatherContext(userPrompt);
     if (weatherContext) {
         console.log('🌤️ [Executor] Câu hỏi thời tiết, lấy data trực tiếp.');
-        return weatherContext;
+        combinedContext += weatherContext + '\n\n';
     }
 
-    if (!plan.requires_search || plan.sub_queries.length === 0) {
-        return '';
+    if (plan.requires_search && plan.sub_queries.length > 0) {
+        console.log(`🔍 [Executor] Đi cào dữ liệu cho ${plan.sub_queries.length} queries:`, plan.sub_queries);
+        const searchContext = await searchWeb(plan.sub_queries);
+        if (searchContext) {
+            combinedContext += searchContext;
+        }
     }
 
-    console.log(`🔍 [Executor] Đi cào dữ liệu cho ${plan.sub_queries.length} queries:`, plan.sub_queries);
-    const searchContext = await searchWeb(plan.sub_queries);
-    return searchContext;
+    return combinedContext.trim();
 }
 
 

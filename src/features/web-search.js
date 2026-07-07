@@ -93,7 +93,7 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
 
                 const content = paragraphs.slice(0, 15).join(' | ');
                 if (content.length > 100) {
-                    contextParts.push(`[Nguồn: ${url}]\n${content.substring(0, 2000)}`);
+                    contextParts.push(`[Nguồn: ${url}]\n${content}`);
                     console.log(`✅ [Deep Scrape] Lấy thành công: ${url}`);
                 }
             } catch (e) {
@@ -106,9 +106,9 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
 
     if (contextParts.length > 0) {
         // Tăng giới hạn tổng để chứa đủ data (Agentic fallback sẽ tự lo nếu quá tải)
-        const MAX_TOTAL_CONTEXT = 15000; 
-        // Chia đều ngân sách ký tự cho từng trang web
-        const budgetPerPart = Math.max(500, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
+        const MAX_TOTAL_CONTEXT = 25000; 
+        // Đảm bảo MỖI trang web có ít nhất 2000 ký tự (nếu ngắn hơn thì lấy hết)
+        const budgetPerPart = Math.max(2000, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
         
         const trimmed = contextParts.map(part => {
             if (part.length > budgetPerPart) {

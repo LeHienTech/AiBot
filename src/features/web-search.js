@@ -105,10 +105,10 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
     }
 
     if (contextParts.length > 0) {
-        // Tăng giới hạn tổng để chứa đủ data (Agentic fallback sẽ tự lo nếu quá tải)
-        const MAX_TOTAL_CONTEXT = 25000; 
-        // Đảm bảo MỖI trang web có ít nhất 2000 ký tự (nếu ngắn hơn thì lấy hết)
-        const budgetPerPart = Math.max(2000, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
+        // Giảm giới hạn tổng xuống mức an toàn (12000) vì payload 25000 ký tự làm sập API miễn phí (Lỗi 500)
+        const MAX_TOTAL_CONTEXT = 12000; 
+        // Đảm bảo mỗi trang web có ít nhất 1000 ký tự (đủ để AI lấy thông tin chính)
+        const budgetPerPart = Math.max(1000, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
         
         const trimmed = contextParts.map(part => {
             if (part.length > budgetPerPart) {

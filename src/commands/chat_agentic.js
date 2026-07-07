@@ -59,7 +59,7 @@ async function callAI(systemPrompt, userPrompt, context = '', options = {}) {
                 const status = err.response?.status || 'Unknown';
                 const errorData = err.response?.data ? JSON.stringify(err.response.data) : err.message;
                 console.warn(`⚠️ [AI] Lỗi ${status}: ${errorData} | Thử lại... (còn ${retries} lần, context v${v + 1}/${contextVersions.length})`);
-                await new Promise(res => setTimeout(res, 2000));
+                await new Promise(res => setTimeout(res, 5000));
             }
         }
         

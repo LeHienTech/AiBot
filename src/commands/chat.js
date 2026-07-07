@@ -1,7 +1,7 @@
 const axios = require('axios');
 const { getWeatherContext } = require('../features/weather');
 const { searchWeb } = require('../features/web-search');
-const { LM_STUDIO, DISCORD_MAX_LENGTH } = require('../config');
+const { AI_CONFIG, DISCORD_MAX_LENGTH } = require('../config');
 
 /**
  * Xử lý lệnh !chat <câu hỏi> — Trợ lý AI
@@ -46,20 +46,20 @@ async function execute(message) {
 
         // ─── Gọi AI API ───
         const requestConfig = {};
-        if (LM_STUDIO.API_KEY) {
+        if (AI_CONFIG.API_KEY) {
             requestConfig.headers = {
-                'Authorization': `Bearer ${LM_STUDIO.API_KEY}`
+                'Authorization': `Bearer ${AI_CONFIG.API_KEY}`
             };
         }
 
-        const response = await axios.post(LM_STUDIO.URL, {
-            model: LM_STUDIO.MODEL,
+        const response = await axios.post(AI_CONFIG.URL, {
+            model: AI_CONFIG.MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            temperature: LM_STUDIO.TEMPERATURE,
-            max_tokens: LM_STUDIO.MAX_TOKENS,
+            temperature: AI_CONFIG.TEMPERATURE,
+            max_tokens: AI_CONFIG.MAX_TOKENS,
         }, requestConfig);
 
         let aiReply = response.data.choices[0].message.content.trim();
@@ -72,7 +72,7 @@ async function execute(message) {
         await message.reply(aiReply);
 
     } catch (error) {
-        console.error('Lỗi kết nối LM Studio:', error.message);
+        console.error('Lỗi kết nối AI API:', error.message);
         message.reply('❌ Hiện không kết nối được với Ai');
     }
 }

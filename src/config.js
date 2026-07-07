@@ -24,8 +24,8 @@ const YT_DLP_PATH = path.join(
     process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
 );
 
-const LM_STUDIO = {
-    URL: process.env.AI_API_URL || 'http://127.0.0.1:1234/v1/chat/completions',
+const AI_CONFIG = {
+    URL: process.env.AI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
     MODEL: process.env.AI_MODEL || 'gemma-4-31b-it',
     API_KEY: process.env.AI_API_KEY || '',
     TEMPERATURE: 0.3,
@@ -44,7 +44,7 @@ module.exports = {
     NSFW_MAX_IMAGE_SIZE,
     TIMEOUTS,
     YT_DLP_PATH,
-    LM_STUDIO,
+    AI_CONFIG,
     DISCORD_MAX_LENGTH,
     MAX_SONG_DURATION,
 };

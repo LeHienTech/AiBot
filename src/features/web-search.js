@@ -104,16 +104,19 @@ async function deepScrapeUrls(urls, fallbackSnippets) {
         }
     }
 
-    const MAX_TOTAL_CONTEXT = 6000;
-    let totalLen = 0;
-
     if (contextParts.length > 0) {
-        const trimmed = [];
-        for (const part of contextParts) {
-            if (totalLen + part.length > MAX_TOTAL_CONTEXT) break;
-            trimmed.push(part);
-            totalLen += part.length;
-        }
+        // Tăng giới hạn tổng để chứa đủ data (Agentic fallback sẽ tự lo nếu quá tải)
+        const MAX_TOTAL_CONTEXT = 15000; 
+        // Chia đều ngân sách ký tự cho từng trang web
+        const budgetPerPart = Math.max(500, Math.floor(MAX_TOTAL_CONTEXT / contextParts.length));
+        
+        const trimmed = contextParts.map(part => {
+            if (part.length > budgetPerPart) {
+                return part.substring(0, budgetPerPart) + '...';
+            }
+            return part;
+        });
+        
         return trimmed.join('\n\n');
     }
     

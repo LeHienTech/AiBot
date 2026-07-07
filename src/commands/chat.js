@@ -123,32 +123,57 @@ async function execute(message) {
         // ─── Xây dựng payload để tránh lỗi 500 của Google API ───
         const combinedPrompt = `${systemPrompt}\n\n--- CÂU HỎI CỦA NGƯỜI DÙNG ---\n${userPrompt}`;
 
-        let response;
-        let retries = 3;
+        // ─── Bước 5: Gọi AI Tổng hợp & Trả lời ───
+        // Cơ chế fallback thông minh: nếu lỗi 500 → cắt ngắn context → thử lại
+        const contextVersions = [combinedPrompt];
         
+        // Tạo bản rút gọn: chỉ giữ 2000 ký tự context
+        if (webContext && webContext.length > 2000) {
+            const shortContext = webContext.substring(0, 2000) + '\n[...đã cắt ngắn...]';
+            const shortPrompt = `${systemPrompt.split('[TÀI LIỆU THAM KHẢO THỰC TẾ]:')[0]}[TÀI LIỆU THAM KHẢO THỰC TẾ]:\n${shortContext}\n\n-> Dựa vào tài liệu trên, trả lời câu hỏi. Đính kèm link nguồn ở cuối.\n\n--- CÂU HỎI CỦA NGƯỜI DÙNG ---\n${userPrompt}`;
+            contextVersions.push(shortPrompt);
+        }
+        
+        // Bản không có context (trả lời bằng kiến thức sẵn có)
+        const noContextPrompt = `${systemPrompt}\n\n--- CÂU HỎI CỦA NGƯỜI DÙNG ---\n${userPrompt}`;
+        contextVersions.push(noContextPrompt);
+
+        let response;
         const requestConfig = {};
         if (AI_CONFIG.API_KEY) {
             requestConfig.headers = { 'Authorization': `Bearer ${AI_CONFIG.API_KEY}` };
         }
 
-        // ─── Bước 5: Gọi AI Tổng hợp & Trả lời ───
-        while (retries > 0) {
-            try {
-                response = await axios.post(AI_CONFIG.URL, {
-                    model: AI_CONFIG.MODEL,
-                    messages: [
-                        { role: 'user', content: combinedPrompt }
-                    ],
-                    temperature: AI_CONFIG.TEMPERATURE,
-                }, requestConfig);
-                
-                break;
-            } catch (err) {
-                retries--;
-                if (retries === 0) throw err;
-                const status = err.response?.status || 'Unknown';
-                console.warn(`⚠️ API lỗi ${status}, đang thử lại... (${retries} lần còn lại)`);
-                await new Promise(res => setTimeout(res, 5000));
+        for (let v = 0; v < contextVersions.length; v++) {
+            const currentPrompt = contextVersions[v];
+            let retries = 2;
+            let success = false;
+
+            while (retries > 0) {
+                try {
+                    response = await axios.post(AI_CONFIG.URL, {
+                        model: AI_CONFIG.MODEL,
+                        messages: [
+                            { role: 'user', content: currentPrompt }
+                        ],
+                        temperature: AI_CONFIG.TEMPERATURE,
+                    }, requestConfig);
+                    success = true;
+                    break;
+                } catch (err) {
+                    retries--;
+                    const status = err.response?.status || 'Unknown';
+                    console.warn(`⚠️ API lỗi ${status}, đang thử lại... (${retries} lần còn lại, context version ${v + 1}/${contextVersions.length})`);
+                    await new Promise(res => setTimeout(res, 3000));
+                }
+            }
+            
+            if (success) break;
+            
+            if (v < contextVersions.length - 1) {
+                console.log(`🔄 Chuyển sang context rút gọn (version ${v + 2})...`);
+            } else {
+                throw new Error('Tất cả các phiên bản context đều thất bại');
             }
         }
 

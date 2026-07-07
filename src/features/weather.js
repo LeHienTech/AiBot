@@ -74,7 +74,7 @@ async function getWeatherContext(query) {
         const rainChance = tod.hourly?.[4]?.chanceofrain ?? '?';
 
         const result = [
-            `📍 Vị trí: ${city} (Trạm đo: ${areaName}${countryName ? ', ' + countryName : ''})`,
+            `📍 Vị trí: ${city}`,
             `🌡️ Nhiệt độ hiện tại: ${cur.temp_C}°C (cảm giác như ${cur.FeelsLikeC}°C)`,
             `📋 Tình trạng: ${desc}`,
             `📊 Nhiệt độ trong ngày: thấp nhất ${tod.mintempC}°C - cao nhất ${tod.maxtempC}°C`,

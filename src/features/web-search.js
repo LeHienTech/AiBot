@@ -18,8 +18,7 @@ function extractDdgUrl(href) {
 async function getTopUrlsFromQueries(queries) {
     const urls = new Set();
     const snippets = [];
-    const maxTotalUrls = 5;
-    const maxUrlsPerQuery = Math.max(1, Math.floor(maxTotalUrls / queries.length));
+    const maxUrlsPerQuery = 5;
 
     for (const query of queries) {
         let currentQueryUrlCount = 0;
@@ -36,7 +35,7 @@ async function getTopUrlsFromQueries(queries) {
             const $ = cheerio.load(ddgRes.data);
 
             $('.result').each((i, el) => {
-                if (urls.size >= maxTotalUrls || currentQueryUrlCount >= maxUrlsPerQuery) return false;
+                if (currentQueryUrlCount >= maxUrlsPerQuery) return false;
 
                 const snippet = $(el).find('.result__snippet').text().trim();
                 if (snippet.length > 30) snippets.push(snippet);

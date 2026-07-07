@@ -2,6 +2,7 @@ const nsfwDetector = require('../features/nsfw-detector');
 const moderation = require('../features/moderation');
 const musicCmd = require('../commands/music');
 const chatCmd = require('../commands/chat_agentic');
+// const chatCmd = require('../commands/chat');
 const helpCmd = require('../commands/help');
 
 /**

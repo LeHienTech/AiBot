@@ -18,9 +18,11 @@ function extractDdgUrl(href) {
 async function getTopUrlsFromQueries(queries) {
     const urls = new Set();
     const snippets = [];
+    const maxTotalUrls = 5;
+    const maxUrlsPerQuery = Math.max(1, Math.floor(maxTotalUrls / queries.length));
 
     for (const query of queries) {
-        if (urls.size >= 5) break;
+        let currentQueryUrlCount = 0;
         try {
             const ddgHtmlUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=vn-vi`;
             const ddgRes = await axios.get(ddgHtmlUrl, {
@@ -34,7 +36,7 @@ async function getTopUrlsFromQueries(queries) {
             const $ = cheerio.load(ddgRes.data);
 
             $('.result').each((i, el) => {
-                if (urls.size >= 5) return false;
+                if (urls.size >= maxTotalUrls || currentQueryUrlCount >= maxUrlsPerQuery) return false;
 
                 const snippet = $(el).find('.result__snippet').text().trim();
                 if (snippet.length > 30) snippets.push(snippet);
@@ -43,7 +45,10 @@ async function getTopUrlsFromQueries(queries) {
                 const url = extractDdgUrl(href);
                 // Bỏ qua mạng xã hội và video vì bot không đọc được
                 if (url && !url.includes('youtube.com') && !url.includes('facebook.com') && !url.includes('tiktok.com')) {
-                    urls.add(url);
+                    if (!urls.has(url)) {
+                        urls.add(url);
+                        currentQueryUrlCount++;
+                    }
                 }
             });
         } catch (e) {

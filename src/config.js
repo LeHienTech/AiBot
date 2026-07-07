@@ -24,10 +24,10 @@ const YT_DLP_PATH = path.join(
     process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
 );
 
-// LM Studio config
 const LM_STUDIO = {
-    URL: 'http://127.0.0.1:1234/v1/chat/completions',
-    MODEL: 'gemma-4-31b-it',
+    URL: process.env.AI_API_URL || 'http://127.0.0.1:1234/v1/chat/completions',
+    MODEL: process.env.AI_MODEL || 'gemma-4-31b-it',
+    API_KEY: process.env.AI_API_KEY || '',
     TEMPERATURE: 0.3,
     MAX_TOKENS: 512,
 };

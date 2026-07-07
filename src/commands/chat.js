@@ -44,7 +44,14 @@ async function execute(message) {
             -> NẾU dữ liệu Internet chỉ là thông tin rác, lỗi thời hoặc không khớp với ngày hiện tại (${currentTime}), HÃY LỜ NÓ ĐI và dùng kiến thức chuẩn xác của bạn để tư vấn.`;
         }
 
-        // ─── Gọi LM Studio ───
+        // ─── Gọi AI API ───
+        const requestConfig = {};
+        if (LM_STUDIO.API_KEY) {
+            requestConfig.headers = {
+                'Authorization': `Bearer ${LM_STUDIO.API_KEY}`
+            };
+        }
+
         const response = await axios.post(LM_STUDIO.URL, {
             model: LM_STUDIO.MODEL,
             messages: [
@@ -53,7 +60,7 @@ async function execute(message) {
             ],
             temperature: LM_STUDIO.TEMPERATURE,
             max_tokens: LM_STUDIO.MAX_TOKENS,
-        });
+        }, requestConfig);
 
         let aiReply = response.data.choices[0].message.content.trim();
 

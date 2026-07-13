@@ -21,6 +21,8 @@
     "@distube/youtube": "^1.0.4",
     "@distube/yt-dlp": "^2.0.1",
     "@distube/ytdl-core": "^4.16.12",
+    "@emnapi/core": "^1.11.2",
+    "@emnapi/runtime": "^1.11.2",
     "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.17.0",
     "cheerio": "^1.2.0",

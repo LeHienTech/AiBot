@@ -1,6 +1,4 @@
 node_modules
 .env
 cookies.txt
-test_*.js
-test-*.js
 *.log

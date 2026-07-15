@@ -25,9 +25,9 @@ const YT_DLP_PATH = path.join(
 );
 
 const AI_CONFIG = {
-    URL: process.env.AI_API_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-    MODEL: process.env.AI_MODEL || 'gemma-4-31b-it',
-    API_KEY: process.env.AI_API_KEY || '',
+    URL: process.env.AI_API_URL,
+    MODEL: process.env.AI_MODEL,
+    API_KEY: process.env.AI_API_KEY,
     TEMPERATURE: 0.3,
 };
 

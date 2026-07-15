@@ -13,6 +13,7 @@ async function play(message, distube) {
     }
 
     let query = message.content.slice(3).trim();
+    console.log(`[music] ▶️ Lệnh !p từ ${message.author.tag} | query: "${query.substring(0, 100)}"`);
     const guildId = message.guild.id;
 
     let autoPlayFirst = false;
@@ -79,9 +80,12 @@ async function play(message, distube) {
  * Xử lý phát playlist với lazy loading
  */
 async function handlePlaylist(message, distube, query, guildId, voiceChannel) {
+    console.log(`[music] 📋 handlePlaylist: Bắt đầu xử lý playlist | guild=${guildId} | query=${query.substring(0, 80)}`);
     const statusMsg = await message.channel.send('📋 Đang phân tích playlist... (chỉ mất vài giây)');
 
+    const playlistStartTime = Date.now();
     const { name, urls } = await getPlaylistUrls(query);
+    console.log(`[music] 📋 getPlaylistUrls xong: "${name}" — ${urls.length} bài`);
 
     if (urls.length === 0) {
         return statusMsg.edit('❌ Playlist trống hoặc không hợp lệ!');
@@ -106,14 +110,53 @@ async function handlePlaylist(message, distube, query, guildId, voiceChannel) {
         `⚡ Đang tải ${initialBatch} bài đầu tiên để phát ngay...`
     );
 
-    const loaded = await loadBatch(distube, initialBatch, guildData, voiceChannel, {
+    console.log(`[music] 📋 Bắt đầu loadBatch: ${initialBatch} bài đầu tiên...`);
+    const result = await loadBatch(distube, initialBatch, guildData, voiceChannel, {
         message,
         textChannel: message.channel,
         member: message.member,
     });
+    let loaded = result.loaded;
+    let lastError = result.lastError;
+    console.log(`[music] 📋 loadBatch kết quả: loaded=${loaded}/${result.total}, lastError=${lastError || 'none'}`);
+
+    // Nếu batch đầu fail hoàn toàn, thử thêm batch tiếp theo
+    if (loaded === 0 && guildData.loadedIndex < urls.length) {
+        const retryBatch = Math.min(3, urls.length - guildData.loadedIndex);
+        await statusMsg.edit(
+            `📋 **${name}** — ${urls.length} bài\n` +
+            `⚠️ ${initialBatch} bài đầu bị lỗi, đang thử ${retryBatch} bài tiếp...`
+        );
+        const retry = await loadBatch(distube, retryBatch, guildData, voiceChannel, {
+            message,
+            textChannel: message.channel,
+            member: message.member,
+        });
+        loaded = retry.loaded;
+        lastError = retry.lastError || lastError;
+    }
 
     const remaining = urls.length - guildData.loadedIndex;
-    if (remaining > 0) {
+    if (loaded === 0) {
+        // Không bài nào load được → thông báo lỗi rõ ràng
+        const totalElapsed = Date.now() - playlistStartTime;
+        console.error(`[music] ❌ PLAYLIST HOÀN TOÀN THẤT BẠI sau ${totalElapsed}ms | playlist="${name}" | lastError=${lastError}`);
+        const errorHint = lastError
+            ? (lastError.includes('403') || lastError.includes('bot') || lastError.includes('captcha')
+                ? '🤖 YouTube đang chặn bot! Hãy thử lại sau vài phút.'
+                : lastError.includes('timeout') || lastError.includes('ETIMEDOUT') || lastError.includes('fetch failed')
+                    ? '⏱️ Kết nối bị timeout! Mạng server có thể đang chậm.'
+                    : lastError.includes('Sign in') || lastError.includes('age')
+                        ? '🔞 Playlist chứa video yêu cầu xác minh tuổi.'
+                        : `📋 Lỗi: \`${lastError.substring(0, 150)}\``)
+            : '❓ Không rõ nguyên nhân.';
+        message.channel.send(
+            `❌ Không thể tải bài nào từ playlist **${name}**!\n` +
+            `${errorHint}\n` +
+            `💡 Thử lại sau hoặc dùng \`!p <link bài đơn>\` để phát trực tiếp.`
+        );
+        playlistData.delete(guildId);
+    } else if (remaining > 0) {
         message.channel.send(
             `✅ Đã tải **${loaded}/${urls.length}** bài — đang phát!\n` +
             `🔄 Còn **${remaining}** bài sẽ được tải tự động khi cần.`
@@ -358,11 +401,14 @@ async function skip(message, distube) {
             const guildData = playlistData.get(message.guild.id);
             if (guildData && guildData.loadedIndex < guildData.urls.length) {
                 message.reply('⏭️ Đang tải bài tiếp theo từ playlist...');
-                await loadBatch(distube, 1, guildData, voiceChannel, {
+                const result = await loadBatch(distube, 1, guildData, voiceChannel, {
                     message,
                     textChannel: message.channel,
                     member: message.member,
                 });
+                if (result.loaded === 0) {
+                    return message.reply(`❌ Không thể tải bài tiếp theo!${result.lastError ? ` Lỗi: \`${result.lastError.substring(0, 100)}\`` : ''}`);
+                }
                 await distube.skip(message).catch(() => { });
             } else {
                 distube.stop(message);

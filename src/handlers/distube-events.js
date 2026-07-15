@@ -13,6 +13,7 @@ const MAX_RETRIES = 2;
 function register(distube) {
     // Thông báo khi phát bài
     distube.on('playSong', async (queue, song) => {
+        console.log(`[distube] 🎶 playSong: "${song.name}" | url=${song.url} | duration=${song.formattedDuration} | guild=${queue.textChannel?.guildId}`);
         // Kiểm tra nếu bài hát quá dài
         if (song.duration > MAX_SONG_DURATION) {
             queue.textChannel?.send(`❌ Không thể phát nhạc **${song.name}** vì nhạc quá dài (${song.formattedDuration})`);
@@ -44,6 +45,7 @@ function register(distube) {
 
     // Thông báo khi thêm bài vào hàng đợi
     distube.on('addSong', (queue, song) => {
+        console.log(`[distube] ➕ addSong: "${song.name}" | url=${song.url} | guild=${queue.textChannel?.guildId}`);
         const guildId = queue.textChannel?.guildId;
         if (guildId && silentAdd.has(guildId)) return;
         queue.textChannel?.send(`✅ Đã thêm vào hàng đợi: **${song.name}** - \`${song.formattedDuration}\``);
@@ -70,14 +72,16 @@ function register(distube) {
             console.log(`🔄 Auto-preload: Queue còn ${remainingInQueue} bài, tải thêm ${batchSize} bài...`);
             queue.textChannel?.send(`🔄 Đang tải thêm **${batchSize}** bài từ playlist...`);
 
-            const loaded = await loadBatch(distube, batchSize, guildData, guildData.voiceChannel, {
+            const result = await loadBatch(distube, batchSize, guildData, guildData.voiceChannel, {
                 textChannel: guildData.textChannel,
                 member: guildData.member,
             });
 
             const stillRemaining = guildData.urls.length - guildData.loadedIndex;
-            if (loaded > 0) {
-                queue.textChannel?.send(`✅ Đã tải thêm **${loaded}** bài! (Còn **${stillRemaining}** bài trong playlist)`);
+            if (result.loaded > 0) {
+                queue.textChannel?.send(`✅ Đã tải thêm **${result.loaded}** bài! (Còn **${stillRemaining}** bài trong playlist)`);
+            } else if (result.lastError) {
+                queue.textChannel?.send(`⚠️ Không tải được bài tiếp theo: \`${result.lastError.substring(0, 100)}\``);
             }
 
             if (stillRemaining === 0) {
@@ -126,7 +130,11 @@ function register(distube) {
     distube.on('error', async (error, queue, song) => {
         const errorMsg = error.message || String(error);
         const errorCode = error.errorCode || '';
-        console.error('DisTube error:', errorMsg);
+        console.error(`[distube] ❌ ERROR event:`);
+        console.error(`[distube] ❌ Song: ${song?.name || 'N/A'} | URL: ${song?.url || 'N/A'}`);
+        console.error(`[distube] ❌ Error code: ${errorCode || 'N/A'}`);
+        console.error(`[distube] ❌ Error message: ${errorMsg}`);
+        if (error.stack) console.error(`[distube] ❌ Stack trace:\n${error.stack}`);
         const textChannel = queue?.textChannel;
         const guildId = queue?.textChannel?.guildId || queue?.id;
 

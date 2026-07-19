@@ -516,13 +516,30 @@ async function leave(message, distube) {
         return message.reply('❌ Bạn phải vào kênh thoại thì mới có thể ngắt kết nối bot!');
     }
 
+    const guildId = message.guild.id;
+
+    // Dọn dẹp playlist data trước để ngăn auto-preload tiếp tục
+    playlistData.delete(guildId);
+
+    // Dừng nhạc nếu đang phát
+    try {
+        const queue = distube.getQueue(message);
+        if (queue) {
+            if (queue.paused) distube.resume(message);
+            await distube.stop(message).catch(() => {});
+        }
+    } catch (e) {
+        // Queue không tồn tại, bỏ qua
+    }
+
+    // Ngắt kết nối voice
     try {
         await distube.voices.leave(message);
         message.channel.send('👋 Đã ngắt kết nối và rời khỏi kênh thoại!');
     } catch (e) {
         // Fallback ngắt bằng getVoiceConnection nếu distube bị lỗi state
         const { getVoiceConnection } = require('@discordjs/voice');
-        const connection = getVoiceConnection(message.guild.id);
+        const connection = getVoiceConnection(guildId);
         if (connection) {
             connection.destroy();
             message.channel.send('👋 Đã ngắt kết nối và rời khỏi kênh thoại!');

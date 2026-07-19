@@ -1,22 +1,9 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
-const { DisTube } = require('distube');
-const { YtDlpPlugin } = require('@distube/yt-dlp');
-const { SoundCloudPlugin } = require('@distube/soundcloud');
-const ffmpegPath = require('ffmpeg-static');
 const fs = require('fs');
 const path = require('path');
 
-// Handlers
-const messageHandler = require('./src/handlers/message');
-const interactionHandler = require('./src/handlers/interaction');
-const distubeEvents = require('./src/handlers/distube-events');
-
-// Features
-const nsfwDetector = require('./src/features/nsfw-detector');
-const audioProxy = require('./src/utils/audio-proxy');
-
 // ─── Tạo cookies.txt từ env var (cho server deploy) ───
+// PHẢI chạy TRƯỚC require('@distube/yt-dlp') vì plugin tìm cookies.txt lúc load
 const cookiesPath = path.join(__dirname, 'cookies.txt');
 if (!fs.existsSync(cookiesPath) && process.env.YOUTUBE_COOKIES_BASE64) {
     try {
@@ -41,6 +28,21 @@ if (!fs.existsSync(cookiesPath) && process.env.YOUTUBE_COOKIES_BASE64) {
 } else {
     console.warn('⚠️ Không có cookies.txt và không có YOUTUBE_COOKIES_BASE64 — YouTube có thể chặn bot!');
 }
+
+const { Client, GatewayIntentBits } = require('discord.js');
+const { DisTube } = require('distube');
+const { YtDlpPlugin } = require('@distube/yt-dlp');
+const { SoundCloudPlugin } = require('@distube/soundcloud');
+const ffmpegPath = require('ffmpeg-static');
+
+// Handlers
+const messageHandler = require('./src/handlers/message');
+const interactionHandler = require('./src/handlers/interaction');
+const distubeEvents = require('./src/handlers/distube-events');
+
+// Features
+const nsfwDetector = require('./src/features/nsfw-detector');
+const audioProxy = require('./src/utils/audio-proxy');
 
 // ─── Khởi tạo Client ───
 const client = new Client({

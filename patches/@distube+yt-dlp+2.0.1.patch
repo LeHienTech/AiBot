@@ -41,8 +41,8 @@ index b17b126..81cfb80 100644
 -      if (code === 0) resolve(JSON.parse(output));
 -      else reject(new Error(output));
 +      if (code === 0) {
-+        // Fix: Strip out any Deprecated Feature warnings before parsing
-+        const cleanOutput = output.replace(/^Deprecated Feature:.*?\n/gm, '');
++        // Fix: Strip out any Deprecated/warning lines before parsing JSON
++        const cleanOutput = output.replace(/^Deprecated.*?\n/gim, '').trim();
 +        try {
 +          resolve(JSON.parse(cleanOutput));
 +        } catch (parseErr) {

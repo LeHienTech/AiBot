@@ -20,7 +20,17 @@ const audioProxy = require('./src/utils/audio-proxy');
 const cookiesPath = path.join(__dirname, 'cookies.txt');
 if (!fs.existsSync(cookiesPath) && process.env.YOUTUBE_COOKIES_BASE64) {
     try {
-        const cookiesContent = Buffer.from(process.env.YOUTUBE_COOKIES_BASE64, 'base64').toString('utf-8');
+        const envValue = process.env.YOUTUBE_COOKIES_BASE64.trim();
+        let cookiesContent;
+        // Tự nhận diện: nếu giá trị là raw cookie (bắt đầu bằng # hoặc .youtube) → dùng trực tiếp
+        // Nếu không → decode base64
+        if (envValue.startsWith('#') || envValue.startsWith('.youtube')) {
+            cookiesContent = envValue;
+            console.log('🍪 Phát hiện raw cookies content trong env var');
+        } else {
+            cookiesContent = Buffer.from(envValue, 'base64').toString('utf-8');
+            console.log('🍪 Đã decode cookies từ base64');
+        }
         fs.writeFileSync(cookiesPath, cookiesContent);
         console.log('🍪 Đã tạo cookies.txt từ environment variable');
     } catch (err) {

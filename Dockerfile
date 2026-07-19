@@ -7,8 +7,9 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install Node dependencies
+# Install Node dependencies (patches/ needed for postinstall: patch-package)
 COPY package.json package-lock.json ./
+COPY patches/ patches/
 RUN npm ci
 
 # Copy application files

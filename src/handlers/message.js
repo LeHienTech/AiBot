@@ -43,7 +43,7 @@ function register(client) {
             await musicCmd.replay(message, distube);
         } else if (content === '!l' || content.startsWith('!l ')) {
             await musicCmd.loop(message, distube);
-        } else if (content === '!dc' || content === '!leave') {
+        } else if (content === '!dc' || content === '!leave' || content === '!stop') {
             await musicCmd.leave(message, distube);
         } else if (content.startsWith('!chat ')) {
             await chatCmd.execute(message);
